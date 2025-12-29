@@ -7,59 +7,84 @@ use yii\data\ActiveDataProvider;
 use common\models\Task;
 
 /**
- * TaskSearchFrontend represents the model behind the search form of `common\models\Task`.
+ * TaskSearchFrontend model
+ *
+ * This model is used on the frontend to search and filter tasks.
+ * It extends the Task model and provides filtering logic
+ * for lists, dashboards, or task views.
  */
 class TaskSearchFrontend extends Task
 {
-
-    public $team_id;
     /**
-     * {@inheritdoc}
+     * Team ID filter (virtual attribute).
+     */
+    public $team_id;
+
+    /**
+     * Validation rules for search attributes.
      */
     public function rules()
     {
         return [
-            [['id', 'user_id', 'assigned_to', 'assignee_id', 'sort_order', 'created_by', 'created_at', 'updated_at', 'team_id', 'board_id'], 'integer'],
+            // Integer filters
+            [
+                [
+                    'id',
+                    'user_id',
+                    'assigned_to',
+                    'assignee_id',
+                    'sort_order',
+                    'created_by',
+                    'created_at',
+                    'updated_at',
+                    'team_id',
+                    'board_id'
+                ],
+                'integer'
+            ],
+
+            // Safe text/date filters
             [['title', 'description', 'status', 'priority', 'due_date'], 'safe'],
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * Scenarios are not required for search model.
      */
     public function scenarios()
     {
-        // bypass scenarios() implementation in the parent class
+        // Bypass parent scenarios
         return Model::scenarios();
     }
 
     /**
-     * Creates data provider instance with search query applied
+     * Creates data provider instance with search query applied.
      *
-     * @param array $params
-     * @param string|null $formName Form name to be used into `->load()` method.
+     * @param array $params Request parameters
+     * @param string|null $formName Optional form name
      *
      * @return ActiveDataProvider
      */
     public function search($params, $formName = null)
     {
+        // Base query
         $query = Task::find();
 
-        // add conditions that should always apply here
-
+        // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
         ]);
 
+        // Load parameters into model
         $this->load($params, $formName);
 
+        // If validation fails, return unfiltered data
         if (!$this->validate()) {
-            // uncomment the following line if you do not want to return any records when validation fails
-            // $query->where('0=1');
             return $dataProvider;
         }
 
-        // grid filtering conditions
+        /* ================= EXACT MATCH FILTERS ================= */
+
         $query->andFilterWhere([
             'id' => $this->id,
             'user_id' => $this->user_id,
@@ -73,6 +98,8 @@ class TaskSearchFrontend extends Task
             'team_id' => $this->team_id,
             'board_id' => $this->board_id,
         ]);
+
+        /* ================= TEXT SEARCH FILTERS ================= */
 
         $query->andFilterWhere(['like', 'title', $this->title])
             ->andFilterWhere(['like', 'description', $this->description])

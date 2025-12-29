@@ -5,28 +5,49 @@ namespace common\models;
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use yii\helpers\ArrayHelper;
-use common\models\Task;
 
 /**
- * TaskSearch represents the model behind the search form of `common\models\Task`.
+ * TaskSearch model
+ *
+ * This model handles filtering and searching of Task records.
+ * It is mainly used for grid and list filters.
  */
 class TaskSearch extends Task
 {
-
-    public $assigned_to_name;
     /**
-     * {@inheritdoc}
+     * Virtual attribute for assignee name.
+     */
+    public $assigned_to_name;
+
+    /**
+     * Validation rules for search attributes.
      */
     public function rules()
     {
         return [
-            [['id', 'assigned_to', 'assignee_id', 'sort_order', 'created_by', 'created_at', 'updated_at', 'team_id', 'board_id'], 'integer'],
+            // Integer filters
+            [
+                [
+                    'id',
+                    'assigned_to',
+                    'assignee_id',
+                    'sort_order',
+                    'created_by',
+                    'created_at',
+                    'updated_at',
+                    'team_id',
+                    'board_id'
+                ],
+                'integer'
+            ],
+
+            // Safe (searchable) fields
             [['title', 'description', 'status', 'priority', 'due_date'], 'safe'],
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * Scenarios are not used in search model.
      */
     public function scenarios()
     {
@@ -34,7 +55,7 @@ class TaskSearch extends Task
     }
 
     /**
-     * Status list for filter dropdown (dynamic)
+     * Returns dynamic status list for filter dropdown.
      */
     public static function getStatusList()
     {
@@ -52,31 +73,34 @@ class TaskSearch extends Task
     }
 
     /**
-     * Creates data provider instance with search query applied
+     * Creates data provider instance with search query applied.
      */
     public function search($params, $formName = null)
     {
         $query = Task::find();
 
+        // Pagination size
         $pageSize = $params['per-page'] ?? 10;
-        // base filters
+
+        // Base filters
         $query->andFilterWhere(['team_id' => $this->team_id]);
         $query->andFilterWhere(['board_id' => $this->board_id]);
 
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
-            'pageSize' => $pageSize,
-        ],
+                'pageSize' => $pageSize,
+            ],
         ]);
 
+        // Load parameters
         $this->load($params, $formName);
 
         if (!$this->validate()) {
             return $dataProvider;
         }
 
-        // exact match filters
+        // Exact match filters
         $query->andFilterWhere([
             'id' => $this->id,
             'assigned_to' => $this->assigned_to,
@@ -88,10 +112,10 @@ class TaskSearch extends Task
             'team_id' => $this->team_id,
         ]);
 
-        // text filters
+        // Text and dropdown filters
         $query->andFilterWhere(['like', 'title', $this->title])
             ->andFilterWhere(['like', 'description', $this->description])
-              ->andFilterWhere(['status' => $this->status])   // exact match for dropdown
+            ->andFilterWhere(['status' => $this->status])
             ->andFilterWhere(['like', 'priority', $this->priority]);
 
         // Due date filter (date only)

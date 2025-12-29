@@ -6,46 +6,79 @@ use yii\base\Model;
 use yii\data\ActiveDataProvider;
 use common\models\Board;
 
+/**
+ * BoardSearch model
+ *
+ * This model handles searching and filtering of Board records
+ * in the backend panel. It supports filtering by team name,
+ * creator username, and creation date.
+ */
 class BoardSearch extends Board
 {
+    /**
+     * Virtual attributes for related table filters.
+     */
     public $team_name;
     public $created_by_username;
 
+    /**
+     * Validation rules for search attributes.
+     */
     public function rules()
     {
         return [
+            // Integer filters
             [['id', 'team_id'], 'integer'],
+
+            // Safe (searchable) fields
             [
                 [
                     'title',
                     'description',
                     'team_name',
                     'created_by_username',
-                    'created_at'
+                    'created_at',
                 ],
                 'safe'
             ],
         ];
     }
 
+    /**
+     * Scenarios are not required for search model.
+     */
     public function scenarios()
     {
         return Model::scenarios();
     }
 
+    /**
+     * Creates data provider instance with search query applied.
+     *
+     * @param array       $params
+     * @param string|null $formName
+     *
+     * @return ActiveDataProvider
+     */
     public function search($params, $formName = null)
     {
+        // Base query with alias
         $query = Board::find()->alias('b');
 
-        // ✅ Correct joins with aliases
+        /**
+         * Join related tables with aliases:
+         * - team table as "t"
+         * - user table (creator) as "u"
+         */
         $query->joinWith([
             'team t',
-            'createdBy u'
+            'createdBy u',
         ]);
 
-        // 🔥 IMPORTANT: avoid duplicate rows
+        // Prevent duplicate rows caused by joins
         $query->groupBy('b.id');
 
+        // Data provider configuration
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
@@ -53,26 +86,29 @@ class BoardSearch extends Board
             ],
         ]);
 
-        // ✅ Sorting
+        /**
+         * Custom sorting for virtual attributes.
+         */
         $dataProvider->sort->attributes['team_name'] = [
-            'asc' => ['t.name' => SORT_ASC],
+            'asc'  => ['t.name' => SORT_ASC],
             'desc' => ['t.name' => SORT_DESC],
         ];
 
         $dataProvider->sort->attributes['created_by_username'] = [
-            'asc' => ['u.username' => SORT_ASC],
+            'asc'  => ['u.username' => SORT_ASC],
             'desc' => ['u.username' => SORT_DESC],
         ];
 
-        // Load filters
+        // Load request parameters
         $this->load($params, $formName);
 
+        // If validation fails, return unfiltered results
         if (!$this->validate()) {
             return $dataProvider;
         }
 
         /* ===============================
-           EXACT FILTERS
+           EXACT MATCH FILTERS
         =============================== */
 
         if ($this->id !== null && $this->id !== '') {
@@ -93,12 +129,13 @@ class BoardSearch extends Board
         $query->andFilterWhere(['like', 'u.username', $this->created_by_username]);
 
         /* ===============================
-           DATE FILTER (CRITICAL FIX)
+           DATE FILTER
+           Filters by date only (ignores time)
         =============================== */
 
         if (!empty($this->created_at)) {
             $query->andWhere([
-                'DATE(FROM_UNIXTIME(b.created_at))' => $this->created_at
+                'DATE(FROM_UNIXTIME(b.created_at))' => $this->created_at,
             ]);
         }
 

@@ -6,7 +6,9 @@ use Yii;
 use yii\base\Model;
 
 /**
- * Login form
+ * LoginForm model
+ *
+ * This model handles user login using username and password.
  */
 class LoginForm extends Model
 {
@@ -14,35 +16,41 @@ class LoginForm extends Model
     public $password;
     public $rememberMe = true;
 
+    /**
+     * Cached user instance.
+     */
     private $_user;
 
-
     /**
-     * {@inheritdoc}
+     * Validation rules for login form.
      */
     public function rules()
     {
         return [
-            // username and password are both required
+            // Username and password are required
             [['username', 'password'], 'required'],
-            // rememberMe must be a boolean value
+
+            // RememberMe must be boolean
             ['rememberMe', 'boolean'],
-            // password is validated by validatePassword()
+
+            // Password validation using custom method
             ['password', 'validatePassword'],
         ];
     }
 
     /**
      * Validates the password.
-     * This method serves as the inline validation for password.
+     * This is an inline validator for password field.
      *
-     * @param string $attribute the attribute currently being validated
-     * @param array $params the additional name-value pairs given in the rule
+     * @param string $attribute attribute currently being validated
+     * @param array  $params additional parameters
      */
     public function validatePassword($attribute, $params)
     {
         if (!$this->hasErrors()) {
             $user = $this->getUser();
+
+            // Invalid username or password
             if (!$user || !$user->validatePassword($this->password)) {
                 $this->addError($attribute, 'Incorrect username or password.');
             }
@@ -50,27 +58,32 @@ class LoginForm extends Model
     }
 
     /**
-     * Logs in a user using the provided username and password.
+     * Logs in the user if validation passes.
      *
-     * @return bool whether the user is logged in successfully
+     * @return bool whether login was successful
      */
     public function login()
-{
-    if (!$this->validate()) {
-        return false;
+    {
+        // Validate form data
+        if (!$this->validate()) {
+            return false;
+        }
+
+        // Block login if user email is not verified
+        if ($this->getUser()->status == User::STATUS_INACTIVE) {
+            $this->addError('username', 'Please verify your email before login.');
+            return false;
+        }
+
+        // Login user with or without remember me
+        return Yii::$app->user->login(
+            $this->getUser(),
+            $this->rememberMe ? 3600 * 24 * 30 : 0
+        );
     }
-
-    if ($this->getUser()->status == User::STATUS_INACTIVE) {
-        $this->addError('username', 'Please verify your email before login.');
-        return false;
-    }
-
-    return Yii::$app->user->login($this->getUser(), $this->rememberMe ? 3600*24*30 : 0);
-}
-
 
     /**
-     * Finds user by [[username]]
+     * Finds user by username.
      *
      * @return User|null
      */

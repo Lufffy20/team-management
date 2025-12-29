@@ -4,60 +4,80 @@ namespace common\models;
 
 use yii\base\Model;
 use yii\data\ActiveDataProvider;
-use common\models\User;
 
 /**
- * UserSearch represents the model behind the search form of `common\models\User`.
+ * UserSearch model
+ *
+ * This model is used to search and filter User records.
+ * It is mainly used in GridView and listing pages.
  */
 class UserSearch extends User
 {
     /**
-     * {@inheritdoc}
+     * Validation rules for search fields.
      */
     public function rules()
     {
         return [
+            // Integer filters
             [['id', 'role', 'status', 'created_at', 'updated_at'], 'integer'],
-            [['first_name', 'last_name', 'avatar', 'username', 'auth_key', 'password_hash', 'password_reset_token', 'email', 'pending_email', 'verification_token'], 'safe'],
+
+            // Safe text filters
+            [
+                [
+                    'first_name',
+                    'last_name',
+                    'avatar',
+                    'username',
+                    'auth_key',
+                    'password_hash',
+                    'password_reset_token',
+                    'email',
+                    'pending_email',
+                    'verification_token'
+                ],
+                'safe'
+            ],
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * Scenarios are not required for search model.
      */
     public function scenarios()
     {
-        // bypass scenarios() implementation in the parent class
+        // Bypass parent scenarios
         return Model::scenarios();
     }
 
     /**
-     * Creates data provider instance with search query applied
+     * Creates data provider instance with applied search filters.
      *
-     * @param array $params
-     * @param string|null $formName Form name to be used into `->load()` method.
+     * @param array $params     Request parameters
+     * @param string|null $formName Optional form name
      *
      * @return ActiveDataProvider
      */
     public function search($params, $formName = null)
     {
+        // Base query
         $query = User::find();
 
-        // add conditions that should always apply here
-
+        // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
         ]);
 
+        // Load search parameters
         $this->load($params, $formName);
 
+        // If validation fails, return unfiltered data
         if (!$this->validate()) {
-            // uncomment the following line if you do not want to return any records when validation fails
-            // $query->where('0=1');
             return $dataProvider;
         }
 
-        // grid filtering conditions
+        /* ================= EXACT MATCH FILTERS ================= */
+
         $query->andFilterWhere([
             'id' => $this->id,
             'role' => $this->role,
@@ -65,6 +85,8 @@ class UserSearch extends User
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ]);
+
+        /* ================= TEXT SEARCH FILTERS ================= */
 
         $query->andFilterWhere(['like', 'first_name', $this->first_name])
             ->andFilterWhere(['like', 'last_name', $this->last_name])

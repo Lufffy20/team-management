@@ -8,7 +8,14 @@ use yii\web\UploadedFile;
 use common\models\User;
 use common\components\StripeService;
 
-
+/**
+ * SignupForm model
+ *
+ * This model handles user registration.
+ * It validates user input, creates a new user,
+ * uploads avatar, creates Stripe customer,
+ * and sends email verification link.
+ */
 class SignupForm extends Model
 {
     public $first_name;
@@ -18,50 +25,70 @@ class SignupForm extends Model
     public $password;
     public $confirm_password;
 
-    // new field that is not exist in db
+    /**
+     * Virtual attribute for avatar upload
+     * (not stored directly in database)
+     */
     public $avatarFile;
 
+    /**
+     * Validation rules for signup form.
+     */
     public function rules()
     {
         return [
 
-            /* ----- BASIC SANITIZATION ----- */
+            /* ---------- BASIC SANITIZATION ---------- */
             [['first_name', 'last_name', 'username', 'email'], 'trim'],
 
-            /* ----- REQUIRED FIELDS ----- */
+            /* ---------- REQUIRED FIELDS ---------- */
             [['first_name', 'last_name', 'username', 'email', 'password', 'confirm_password'], 'required'],
 
-            /* ----- FIRST NAME / LAST NAME ----- */
+            /* ---------- FIRST & LAST NAME ---------- */
             [['first_name', 'last_name'], 'string', 'min' => 2, 'max' => 50],
             [['first_name', 'last_name'], 'match', 'pattern' => '/^[A-Za-z ]+$/', 'message' => 'Only alphabets allowed.'],
 
-            /* ----- USERNAME VALIDATION ----- */
+            /* ---------- USERNAME VALIDATION ---------- */
             ['username', 'string', 'min' => 3, 'max' => 30],
-            ['username', 'match', 'pattern' => '/^[A-Za-z0-9_]+$/', 'message' => 'Only letters, numbers & underscore allowed.'],
-            ['username', 'unique', 'targetClass' => '\common\models\User',
-            'message' => 'This username has already been taken.'
+            ['username', 'match', 'pattern' => '/^[A-Za-z0-9_]+$/', 'message' => 'Only letters, numbers and underscore allowed.'],
+            [
+                'username',
+                'unique',
+                'targetClass' => User::class,
+                'message' => 'This username has already been taken.'
             ],
 
-
-            /* ----- EMAIL VALIDATION ----- */
+            /* ---------- EMAIL VALIDATION ---------- */
             ['email', 'email'],
             ['email', 'string', 'max' => 255],
-            ['email', 'unique', 'targetClass' => '\common\models\User',
-            'message' => 'This email address has already been taken.'
+            [
+                'email',
+                'unique',
+                'targetClass' => User::class,
+                'message' => 'This email address has already been taken.'
             ],
 
-
-            /* ----- PASSWORD VALIDATION ----- */
+            /* ---------- PASSWORD VALIDATION ---------- */
             ['password', 'string', 'min' => Yii::$app->params['user.passwordMinLength']],
-            ['password', 'match', 'pattern' => '/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*#?&]).+$/',
-                'message' => 'Password must contain uppercase, lowercase, number & special character.'
+            [
+                'password',
+                'match',
+                'pattern' => '/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*#?&]).+$/',
+                'message' => 'Password must contain uppercase, lowercase, number and special character.'
             ],
 
-            /* ----- CONFIRM PASSWORD ----- */
-            ['confirm_password', 'compare', 'compareAttribute' => 'password', 'message' => 'Passwords do not match.'],
+            /* ---------- CONFIRM PASSWORD ---------- */
+            [
+                'confirm_password',
+                'compare',
+                'compareAttribute' => 'password',
+                'message' => 'Passwords do not match.'
+            ],
 
-            /* ----- NEW: AVATAR FILE VALIDATION ----- */
-            ['avatarFile', 'file',
+            /* ---------- AVATAR UPLOAD ---------- */
+            [
+                'avatarFile',
+                'file',
                 'extensions' => 'png, jpg, jpeg, webp',
                 'maxSize' => 2 * 1024 * 1024,
                 'skipOnEmpty' => true,
@@ -70,79 +97,96 @@ class SignupForm extends Model
         ];
     }
 
+    /**
+     * Registers a new user.
+     *
+     * @return User|null
+     */
     public function signup()
     {
+        // Stop if validation fails
         if (!$this->validate()) {
             return null;
         }
 
+        /* ---------- CREATE USER ---------- */
         $user = new User();
         $user->first_name = $this->first_name;
-        $user->last_name = $this->last_name;
-        $user->username = $this->username;
-        $user->email = $this->email;
+        $user->last_name  = $this->last_name;
+        $user->username   = $this->username;
+        $user->email      = $this->email;
+
+        // Password & auth setup
         $user->setPassword($this->password);
         $user->generateAuthKey();
         $user->generateEmailVerificationToken();
-        $user->status = User::STATUS_INACTIVE;
-        $user->role = User::ROLE_USER;
 
+        // Default values
+        $user->status = User::STATUS_INACTIVE; // email verification pending
+        $user->role   = User::ROLE_USER;
 
-        // Avatar upload
+        /* ---------- AVATAR UPLOAD ---------- */
         $this->avatarFile = UploadedFile::getInstance($this, 'avatarFile');
 
         if ($this->avatarFile) {
 
-            $fileName = time() . '_' . $this->avatarFile->baseName . '.' . $this->avatarFile->extension;
-            $uploadPath = Yii::getAlias('@webroot/uploads/avatars/' . $fileName);
+            $fileName   = time() . '_' . $this->avatarFile->baseName . '.' . $this->avatarFile->extension;
+            $uploadDir  = Yii::getAlias('@webroot/uploads/avatars/');
+            $uploadPath = $uploadDir . $fileName;
 
-            if (!is_dir(Yii::getAlias('@webroot/uploads/avatars'))) {
-                mkdir(Yii::getAlias('@webroot/uploads/avatars'), 0777, true);
+            // Create directory if not exists
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
             }
 
+            // Save file and assign to user
             if ($this->avatarFile->saveAs($uploadPath)) {
                 $user->avatar = $fileName;
             }
         }
 
-        // save user first bcz user id
+        // Save user first (needed for user ID)
         if (!$user->save()) {
             return null;
         }
 
-    $transaction = Yii::$app->db->beginTransaction();
+        /* ---------- STRIPE CUSTOMER CREATION ---------- */
+        $transaction = Yii::$app->db->beginTransaction();
 
-    try {
-        if (empty($user->stripe_customer_id)) {
+        try {
+            if (empty($user->stripe_customer_id)) {
 
-            //object use contstractor
-            $stripeService = new StripeService();
+                $stripeService = new StripeService();
+                $customerId = $stripeService->createCustomer($user);
 
-            $customerId = $stripeService->createCustomer($user);
+                $user->stripe_customer_id = $customerId;
+                $user->save(false);
+            }
 
-            $user->stripe_customer_id = $customerId;
-            $user->save(false);
+            $transaction->commit();
+
+        } catch (\Throwable $e) {
+
+            $transaction->rollBack();
+
+            Yii::error(
+                'Stripe error during signup: ' . $e->getMessage(),
+                __METHOD__
+            );
         }
 
-    $transaction->commit();
+        /* ---------- SEND VERIFICATION EMAIL ---------- */
+        $this->sendEmail($user);
 
-} catch (\Throwable $e) {
-
-    $transaction->rollBack();
-
-    Yii::error(
-        'Stripe error during signup: ' . $e->getMessage(),
-        __METHOD__
-    );
-}
-//email always send
-$this->sendEmail($user);
-return $user;
-
-
-        return null;
+        return $user;
     }
 
+    /**
+     * Sends email verification link.
+     *
+     * @param User $user
+     * @return bool
+     */
     public function sendEmail($user)
     {
         return Yii::$app->mailer
@@ -151,7 +195,9 @@ return $user;
                 ['user' => $user]
             )
             ->setTo($this->email)
-            ->setFrom([Yii::$app->params['supportEmail'] => Yii::$app->params['senderName']])
+            ->setFrom([
+                Yii::$app->params['supportEmail'] => Yii::$app->params['senderName']
+            ])
             ->setSubject('Verify your email - ' . Yii::$app->name)
             ->send();
     }

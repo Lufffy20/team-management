@@ -7,26 +7,40 @@ use yii\data\ActiveDataProvider;
 use common\models\TeamMembers;
 
 /**
- * TeamMembersSearch represents the model behind the search form of `common\models\TeamMembers`.
+ * TeamMembersSearch model
+ *
+ * This model handles searching and filtering of team members
+ * in the backend panel. It supports filtering by team name,
+ * username, role, and IDs.
  */
 class TeamMembersSearch extends TeamMembers
 {
-    public $team_name;   // ⭐ For searching team by name
-    public $username;    // ⭐ For searching user by username
+    /**
+     * Virtual attribute for team name search.
+     */
+    public $team_name;
 
     /**
-     * {@inheritdoc}
+     * Virtual attribute for username search.
+     */
+    public $username;
+
+    /**
+     * Validation rules for search attributes.
      */
     public function rules()
     {
         return [
+            // Integer filters
             [['id', 'team_id', 'user_id'], 'integer'],
-            [['role', 'team_name', 'username'], 'safe'],  // ⭐ added safe fields
+
+            // Safe (searchable) fields
+            [['role', 'team_name', 'username'], 'safe'],
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * Scenarios are not required for search model.
      */
     public function scenarios()
     {
@@ -34,51 +48,73 @@ class TeamMembersSearch extends TeamMembers
     }
 
     /**
-     * Creates data provider instance with search query applied
+     * Creates data provider instance with search query applied.
+     *
+     * @param array       $params
+     * @param string|null $formName
+     *
+     * @return ActiveDataProvider
      */
-   public function search($params, $formName = null)
-{
-    $query = TeamMembers::find();
+    public function search($params, $formName = null)
+    {
+        // Base query
+        $query = TeamMembers::find();
 
-    // ⭐ JOIN relations
-    $query->joinWith(['team', 'user']);
+        // Join related tables for searching
+        $query->joinWith(['team', 'user']);
 
-    $dataProvider = new ActiveDataProvider([
-        'query' => $query,
-    ]);
+        // Data provider
+        $dataProvider = new ActiveDataProvider([
+            'query' => $query,
+        ]);
 
-    // ⭐ Sorting
-    $dataProvider->sort->attributes['team_name'] = [
-        'asc'  => ['team.name' => SORT_ASC],
-        'desc' => ['team.name' => SORT_DESC],
-    ];
+        /**
+         * Custom sorting for virtual attributes.
+         */
+        $dataProvider->sort->attributes['team_name'] = [
+            'asc'  => ['team.name' => SORT_ASC],
+            'desc' => ['team.name' => SORT_DESC],
+        ];
 
-    $dataProvider->sort->attributes['username'] = [
-        'asc'  => ['user.username' => SORT_ASC],
-        'desc' => ['user.username' => SORT_DESC],
-    ];
+        $dataProvider->sort->attributes['username'] = [
+            'asc'  => ['user.username' => SORT_ASC],
+            'desc' => ['user.username' => SORT_DESC],
+        ];
 
-    $this->load($params, $formName);
+        // Load request parameters
+        $this->load($params, $formName);
 
-    if (!$this->validate()) {
+        // If validation fails, return unfiltered results
+        if (!$this->validate()) {
+            return $dataProvider;
+        }
+
+        /* ===============================
+           EXACT MATCH FILTERS
+        =============================== */
+
+        // Filter by team member ID
+        $query->andFilterWhere([
+            'team_members.id' => $this->id,
+        ]);
+
+        /* ===============================
+           TEXT SEARCH FILTERS
+        =============================== */
+
+        // Search by team name and username
+        $query->andFilterWhere(['like', 'team.name', $this->team_name])
+              ->andFilterWhere(['like', 'user.username', $this->username]);
+
+        /* ===============================
+           ROLE FILTER
+           Exact match for role dropdown
+        =============================== */
+
+        $query->andFilterWhere([
+            'team_members.role' => $this->role,
+        ]);
+
         return $dataProvider;
     }
-
-    // 🔥 ID SEARCH (exact)
-    $query->andFilterWhere([
-        'team_members.id' => $this->id,
-    ]);
-
-    // 🔥 TEXT SEARCH
-    $query->andFilterWhere(['like', 'team.name', $this->team_name])
-          ->andFilterWhere(['like', 'user.username', $this->username]);
-
-    // 🔥 ROLE FILTER (dropdown → exact match)
-    $query->andFilterWhere([
-        'team_members.role' => $this->role,
-    ]);
-
-    return $dataProvider;
-}
-
 }

@@ -6,7 +6,10 @@ use Yii;
 use yii\base\Model;
 
 /**
- * ContactForm is the model behind the contact form.
+ * ContactForm model
+ *
+ * This model is used for the frontend contact form.
+ * It handles validation and email sending logic.
  */
 class ContactForm extends Model
 {
@@ -16,24 +19,25 @@ class ContactForm extends Model
     public $body;
     public $verifyCode;
 
-
     /**
-     * {@inheritdoc}
+     * Validation rules for contact form fields.
      */
     public function rules()
     {
         return [
-            // name, email, subject and body are required
+            // Name, email, subject, and message are required
             [['name', 'email', 'subject', 'body'], 'required'],
-            // email has to be a valid email address
+
+            // Email must be a valid email address
             ['email', 'email'],
-            // verifyCode needs to be entered correctly
+
+            // CAPTCHA verification
             ['verifyCode', 'captcha'],
         ];
     }
 
     /**
-     * {@inheritdoc}
+     * Custom attribute labels.
      */
     public function attributeLabels()
     {
@@ -43,16 +47,19 @@ class ContactForm extends Model
     }
 
     /**
-     * Sends an email to the specified email address using the information collected by this model.
+     * Sends an email using contact form data.
      *
-     * @param string $email the target email address
-     * @return bool whether the email was sent
+     * @param string $email Target email address
+     * @return bool Whether the email was sent successfully
      */
     public function sendEmail($email)
     {
-        return Yii::$app->mailer->compose()
+        return Yii::$app->mailer
+            ->compose()
             ->setTo($email)
-            ->setFrom([Yii::$app->params['senderEmail'] => Yii::$app->params['senderName']])
+            ->setFrom([
+                Yii::$app->params['senderEmail'] => Yii::$app->params['senderName']
+            ])
             ->setReplyTo([$this->email => $this->name])
             ->setSubject($this->subject)
             ->setTextBody($this->body)
