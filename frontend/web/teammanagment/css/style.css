@@ -1,0 +1,173 @@
+body {
+    background: #f5f6fa;
+    overflow-x: hidden;
+    font-family: "Inter", sans-serif;
+}
+
+/* ===================== SIDEBAR ===================== */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: #fff;
+    border-right: 1px solid #e5e5e5;
+    padding: 1rem .7rem;
+    z-index: 1000;
+    transition: all .3s;
+}
+
+/* Logo */
+.sidebar .logo {
+    font-weight: 700;
+    font-size: 1.35rem;
+    padding: 0.6rem 1rem;
+    color: #007bff;
+    letter-spacing: .5px;
+}
+
+/* ===================== LINKS ===================== */
+.sidebar .nav-link {
+    font-size: 0.92rem;
+    padding: .65rem .85rem;
+    border-radius: .45rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    position: relative;
+    transition: 0.25s ease;
+}
+
+/* Hover Effect */
+.sidebar .nav-link:hover {
+    background: #eef3ff;
+    color: #007bff;
+    transform: translateX(3px);
+}
+
+/* Icon hover sync */
+.sidebar .nav-link:hover i {
+    color: #007bff;
+}
+
+/* Active State — Highlight Bar Left */
+.sidebar .nav-link.active {
+    background: #007bff;
+    color: #fff !important;
+    box-shadow: 0 3px 8px rgba(0, 123, 255, 0.28);
+}
+
+.sidebar .nav-link.active i {
+    color: #fff !important;
+}
+
+.sidebar .nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    height: 60%;
+    width: 4px;
+    background: #007bff;
+    border-radius: 0 4px 4px 0;
+    transform: translateY(25%);
+}
+
+/* ===================== SECTION TITLE ===================== */
+.sidebar .section-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #777;
+    padding: .8rem .85rem .35rem;
+    letter-spacing: .45px;
+}
+
+/* ===================== DROPDOWN SMOOTH SLIDE ===================== */
+.sidebar .collapse {
+    transition: all .35s ease-out;
+}
+
+/* ===================== MAIN CONTENT ===================== */
+.content {
+    margin-left: 240px;
+    padding: 1.5rem 2rem;
+    transition: .3s;
+}
+
+/* ===================== TOPBAR ===================== */
+.topbar {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    z-index: 999;
+}
+
+/* Avatar */
+.avatar-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #007bff21;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media(max-width: 1024px){
+    .sidebar{ width: 200px; }
+    .content{ margin-left: 200px; }
+}
+
+@media(max-width: 768px){
+    .sidebar{ width: 0; padding:0; overflow:hidden; }
+    .content{ margin-left:0; }
+}
+
+
+/* Default Sidebar */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    background:#fff;
+    position: fixed;
+    top:0; left:0;
+    border-right:1px solid #e5e5e5;
+    padding:1rem .7rem;
+    z-index:1000;
+    transition:0.35s ease;
+}
+
+/* Main Content */
+.content {
+    margin-left: 240px;
+    padding:1.5rem 2rem;
+    transition:0.35s ease;
+}
+
+/* Tablet View */
+@media(max-width: 992px){
+    .sidebar{ width: 200px; }
+    .content{ margin-left:200px; }
+}
+
+/* Mobile — Sidebar hidden by default */
+@media(max-width: 768px){
+    .sidebar{
+        left:-260px;
+        padding-top:70px;
+        width:240px;
+        box-shadow:2px 0 12px rgba(0,0,0,.15);
+    }
+    .sidebar.open{ left:0; }     /* open when toggled */
+    .content{ margin-left:0; }
+}
+
+/* Background overlay when menu open mobile */
+.menu-overlay{
+    position:fixed;
+    top:0;left:0;width:100%;height:100vh;
+    background:#00000060;
+    display:none; z-index:900;
+}
+.menu-overlay.show{ display:block; }

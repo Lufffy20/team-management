@@ -1,0 +1,49 @@
+.kanban-task {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    transition: transform .18s ease, box-shadow .18s ease;
+    overflow: hidden;
+}
+.kanban-task:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.dragging-task {
+    opacity: 0.48;
+    border: 2px dashed #888;
+    box-shadow: none !important;
+}
+
+/* 🔥 IMAGE COMPACT SIZE */
+.task-cover {
+    width: 100%;
+    max-height: 110px;   /* ⬅️ yahin magic hai */
+    overflow: hidden;
+    background: #f3f3f3;
+}
+
+.task-cover img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* CONTENT */
+.task-content {
+    padding: 8px 10px;   /* ⬅️ thoda compact */
+}
+
+
+.assignee-avatar {
+    width: 28px;
+    height: 28px;
+    background: #4b4b4b;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.85rem;
+}

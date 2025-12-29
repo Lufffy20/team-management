@@ -1,0 +1,46 @@
+
+    .kanban-wrapper { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 10px; }
+    .kanban-column { width: 280px; min-width: 280px; cursor: grab; }
+    .kanban-column.dragging { opacity: 0.5; }
+    .kanban-column.drag-over { border: 2px dashed #3b82f6; border-radius: 10px; }
+
+    .kanban-column .card { border-radius: 14px; border: 1px solid #eee; }
+    .kanban-column-header { font-size: 1.1rem; font-weight: 600; }
+
+    .task-item { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px;
+                border: 1px solid #ececec; transition: 0.15s; cursor: grab; }
+    .task-item:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+
+    .task-title { font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+    .task-meta { font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; }
+
+    .badge-priority { padding: 4px 8px; font-size: 0.7rem; border-radius: 6px; font-weight: 600; }
+
+    .kanban-tasks-dropzone { min-height: 30px; }
+    .kanban-column-drop-hover { background: #f3f6ff; border-radius: 10px; }
+.activity-timeline {
+    position: relative;
+    padding-left: 20px;
+}
+
+.activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.activity-dot {
+    width: 14px;
+    height: 14px;
+    background: #0d6efd;
+    border-radius: 50%;
+    margin-top: 4px;
+}
+
+.activity-content {
+    padding-bottom: 10px;
+}
