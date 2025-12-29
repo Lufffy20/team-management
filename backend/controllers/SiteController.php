@@ -11,6 +11,11 @@ use yii\web\Controller;
 use yii\web\Response;
 use common\models\Task;
 use common\models\Project;
+use backend\models\PasswordResetRequestForm;
+use backend\models\ResetPasswordForm;
+use yii\base\InvalidArgumentException;
+use yii\web\BadRequestHttpException;
+
 
 
 /**
@@ -22,38 +27,51 @@ class SiteController extends Controller
      * {@inheritdoc}
      */
     public function behaviors()
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'rules' => [
-                    [
-                        'actions' => ['login', 'error'],
-                        'allow' => true,
+{
+    return [
+        'access' => [
+            'class' => AccessControl::class,
+            'rules' => [
+
+                //  Guest allowed actions
+                [
+                    'actions' => [
+                        'login',
+                        'error',
+                        'request-password-reset',
+                        'reset-password'
                     ],
-                    [
+                    'allow' => true,
+                    'roles' => ['?'],
+                ],
+
+                //  Logged-in admin only
+                [
                     'allow' => true,
                     'roles' => ['@'],
-                    'matchCallback' => function ($rule, $action) {
+                    'matchCallback' => function () {
                         return Yii::$app->user->identity->role == 1;
                     }
                 ],
 
+                //  Logout for any logged-in user
                 [
                     'actions' => ['logout'],
                     'allow' => true,
-                    'roles' => ['@'], 
-                ],
-                ],
-            ],
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'logout' => ['post'],
+                    'roles' => ['@'],
                 ],
             ],
-        ];
-    }
+        ],
+
+        'verbs' => [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'logout' => ['post'],
+            ],
+        ],
+    ];
+}
+
 
     /**
      * {@inheritdoc}
@@ -262,5 +280,52 @@ class SiteController extends Controller
         return $this->render('team');
     }
 
+public function actionResetPassword($token)
+{
+
+    $this->layout = 'blank';
+    try {
+        $model = new ResetPasswordForm($token);
+    } catch (InvalidArgumentException $e) {
+        throw new BadRequestHttpException($e->getMessage());
+    }
+
+    if ($model->load(Yii::$app->request->post()) && $model->validate() && $model->resetPassword()) {
+        Yii::$app->session->setFlash('success', 'New password saved.');
+        return $this->redirect(['login']);
+    }
+
+    return $this->render('resetPassword', [
+        'model' => $model,
+    ]);
+}
+
+
+public function actionRequestPasswordReset()
+{
+    $this->layout = 'blank';
+    $model = new PasswordResetRequestForm();
+
+    if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+        if ($model->sendEmail()) {
+            Yii::$app->session->setFlash(
+                'success',
+                'Check your email for further instructions.'
+            );
+
+            // 🔥 SMALL IMPROVEMENT
+            return $this->redirect(['login']);
+        }
+
+        Yii::$app->session->setFlash(
+            'error',
+            'Sorry, we are unable to reset password for the provided email.'
+        );
+    }
+
+    return $this->render('requestPasswordResetToken', [
+        'model' => $model,
+    ]);
+}
 
 }

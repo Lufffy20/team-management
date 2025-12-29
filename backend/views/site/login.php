@@ -29,6 +29,14 @@ $this->title = 'Login';
                 <?= Html::submitButton('Login', ['class' => 'btn btn-primary btn-block', 'name' => 'login-button']) ?>
             </div>
 
+            <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-key-fill text-primary me-2"></i>
+                            <span class="text-muted small">
+                                Forgot your password?
+                                <?= Html::a('Reset it here', ['site/request-password-reset'], ['class' => 'fw-semibold']) ?>
+                            </span>
+                        </div>
+
         <?php ActiveForm::end(); ?>
     </div>
 </div>
