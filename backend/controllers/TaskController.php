@@ -9,11 +9,16 @@ use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 
 /**
- * TaskController implements the CRUD actions for Task model.
+ * TaskController
+ *
+ * Implements CRUD actions for the Task model.
  */
 class TaskController extends Controller
 {
     /**
+     * Defines controller behaviors.
+     * Restricts delete action to POST requests only.
+     *
      * @inheritDoc
      */
     public function behaviors()
@@ -24,7 +29,7 @@ class TaskController extends Controller
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
-                        'delete' => ['POST'],
+                        'delete' => ['POST'], // delete allowed only via POST
                     ],
                 ],
             ]
@@ -32,118 +37,136 @@ class TaskController extends Controller
     }
 
     /**
-     * Lists all Task models.
+     * Lists all Task models with search and filters.
      *
      * @return string
      */
     public function actionIndex()
     {
-        $searchModel = new TaskSearch();
-        $dataProvider = $searchModel->search($this->request->queryParams);
+        $searchModel  = new TaskSearch(); // search model
+        $dataProvider = $searchModel->search(
+            $this->request->queryParams // GET params
+        );
 
         return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+            'searchModel'  => $searchModel,   // for filters
+            'dataProvider'=> $dataProvider,  // for grid/list
         ]);
     }
 
     /**
      * Displays a single Task model.
-     * @param int $id
+     *
+     * @param int $id Task ID
      * @return string
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if task not found
      */
     public function actionView($id)
     {
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $this->findModel($id), // load task
         ]);
     }
 
     /**
      * Creates a new Task model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
+     * On success, redirects to the view page.
+     *
      * @return string|\yii\web\Response
      */
     public function actionCreate()
-{
-    $model = new Task();
+    {
+        $model = new Task(); // new task instance
 
-    $users = \common\models\User::find()
-        ->select(["CONCAT(first_name, ' ', last_name) AS name", 'id'])
-        ->indexBy('id')
-        ->column();
+        // Fetch users list for assignment dropdown
+        $users = \common\models\User::find()
+            ->select(["CONCAT(first_name, ' ', last_name) AS name", 'id'])
+            ->indexBy('id') // id as key
+            ->column();     // name as value
 
-    if ($this->request->isPost) {
-        if ($model->load($this->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if ($this->request->isPost) {
+            // Load POST data and save
+            if ($model->load($this->request->post()) && $model->save()) {
+                return $this->redirect([
+                    'view',
+                    'id' => $model->id,
+                ]);
+            }
+        } else {
+            // Set default values for new record
+            $model->loadDefaultValues();
         }
-    } else {
-        $model->loadDefaultValues();
+
+        return $this->render('create', [
+            'model' => $model,
+            'users' => $users, // required for user dropdown
+        ]);
     }
-
-    return $this->render('create', [
-        'model' => $model,
-        'users' => $users,   // MUST SEND THIS
-    ]);
-}
-
-
 
     /**
      * Updates an existing Task model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param int $id
+     * On success, redirects to the view page.
+     *
+     * @param int $id Task ID
      * @return string|\yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if task not found
      */
     public function actionUpdate($id)
-{
-    $model = $this->findModel($id);
+    {
+        $model = $this->findModel($id); // existing task
 
-    $users = \common\models\User::find()
-        ->select(["CONCAT(first_name, ' ', last_name) AS name", 'id'])
-        ->indexBy('id')
-        ->column();
+        // Fetch users list again for update form
+        $users = \common\models\User::find()
+            ->select(["CONCAT(first_name, ' ', last_name) AS name", 'id'])
+            ->indexBy('id')
+            ->column();
 
-    if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
-        return $this->redirect(['view', 'id' => $model->id]);
+        if (
+            $this->request->isPost &&
+            $model->load($this->request->post()) &&
+            $model->save()
+        ) {
+            return $this->redirect([
+                'view',
+                'id' => $model->id,
+            ]);
+        }
+
+        return $this->render('update', [
+            'model' => $model,
+            'users' => $users, // required for user dropdown
+        ]);
     }
-
-    return $this->render('update', [
-        'model' => $model,
-        'users' => $users,   // Send here also
-    ]);
-}
-
 
     /**
      * Deletes an existing Task model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param int $id
+     * Redirects to index after deletion.
+     *
+     * @param int $id Task ID
      * @return \yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if task not found
      */
     public function actionDelete($id)
     {
-        $this->findModel($id)->delete();
-
+        $this->findModel($id)->delete(); // delete task
         return $this->redirect(['index']);
     }
 
     /**
-     * Finds the Task model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param int $id
-     * @return Task the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
+     * Finds the Task model by primary key.
+     *
+     * @param int $id Task ID
+     * @return Task
+     * @throws NotFoundHttpException if model not found
      */
     protected function findModel($id)
     {
         if (($model = Task::findOne(['id' => $id])) !== null) {
-            return $model;
+            return $model; // return found task
         }
 
-        throw new NotFoundHttpException('The requested page does not exist.');
+        throw new NotFoundHttpException(
+            'The requested page does not exist.'
+        );
     }
 }

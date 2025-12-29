@@ -9,11 +9,16 @@ use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 
 /**
- * TeamController implements the CRUD actions for Team model.
+ * TeamController
+ *
+ * Implements CRUD actions for the Team model.
  */
 class TeamController extends Controller
 {
     /**
+     * Defines controller behaviors.
+     * Restricts delete action to POST requests only.
+     *
      * @inheritDoc
      */
     public function behaviors()
@@ -24,7 +29,7 @@ class TeamController extends Controller
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
-                        'delete' => ['POST'],
+                        'delete' => ['POST'], // delete allowed only via POST
                     ],
                 ],
             ]
@@ -32,50 +37,60 @@ class TeamController extends Controller
     }
 
     /**
-     * Lists all Team models.
-     *c;l
+     * Lists all Team models with search and pagination.
+     *
      * @return string
      */
     public function actionIndex()
     {
-        $searchModel = new TeamSearch();
-        $dataProvider = $searchModel->search($this->request->queryParams);
+        $searchModel  = new TeamSearch(); // search model
+        $dataProvider = $searchModel->search(
+            $this->request->queryParams // GET params
+        );
 
+        // Set pagination size
         $dataProvider->pagination->pageSize = 5;
 
         return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+            'searchModel'  => $searchModel,   // for filters
+            'dataProvider'=> $dataProvider,  // for grid/list
         ]);
     }
 
     /**
      * Displays a single Team model.
-     * @param int $id
+     *
+     * @param int $id Team ID
      * @return string
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if team not found
      */
     public function actionView($id)
     {
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $this->findModel($id), // load team
         ]);
     }
 
     /**
      * Creates a new Team model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
+     * On success, redirects to the view page.
+     *
      * @return string|\yii\web\Response
      */
     public function actionCreate()
     {
-        $model = new Team();
+        $model = new Team(); // new team instance
 
         if ($this->request->isPost) {
+            // Load POST data and save
             if ($model->load($this->request->post()) && $model->save()) {
-                return $this->redirect(['view', 'id' => $model->id]);
+                return $this->redirect([
+                    'view',
+                    'id' => $model->id,
+                ]);
             }
         } else {
+            // Load default values for new record
             $model->loadDefaultValues();
         }
 
@@ -86,17 +101,25 @@ class TeamController extends Controller
 
     /**
      * Updates an existing Team model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param int $id
+     * On success, redirects to the view page.
+     *
+     * @param int $id Team ID
      * @return string|\yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if team not found
      */
     public function actionUpdate($id)
     {
-        $model = $this->findModel($id);
+        $model = $this->findModel($id); // existing team
 
-        if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if (
+            $this->request->isPost &&
+            $model->load($this->request->post()) &&
+            $model->save()
+        ) {
+            return $this->redirect([
+                'view',
+                'id' => $model->id,
+            ]);
         }
 
         return $this->render('update', [
@@ -106,31 +129,33 @@ class TeamController extends Controller
 
     /**
      * Deletes an existing Team model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param int $id
+     * Redirects to index after deletion.
+     *
+     * @param int $id Team ID
      * @return \yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if team not found
      */
     public function actionDelete($id)
     {
-        $this->findModel($id)->delete();
-
+        $this->findModel($id)->delete(); // delete team
         return $this->redirect(['index']);
     }
 
     /**
-     * Finds the Team model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param int $id
-     * @return Team the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
+     * Finds the Team model by primary key.
+     *
+     * @param int $id Team ID
+     * @return Team
+     * @throws NotFoundHttpException if model not found
      */
     protected function findModel($id)
     {
         if (($model = Team::findOne(['id' => $id])) !== null) {
-            return $model;
+            return $model; // return found team
         }
 
-        throw new NotFoundHttpException('The requested page does not exist.');
+        throw new NotFoundHttpException(
+            'The requested page does not exist.'
+        );
     }
 }

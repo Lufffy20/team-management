@@ -3,26 +3,30 @@
 namespace frontend\controllers;
 
 use Yii;
-use common\models\Task;
-use frontend\models\TaskSearchFrontend;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
-use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use yii\filters\VerbFilter;
+use common\models\Task;
+use frontend\models\TaskSearchFrontend;
 
 /**
- * TaskUserController implements the CRUD actions for Task model.
+ * TaskUserController
+ *
+ * Handles task listing and basic CRUD
+ * for normal (frontend) users.
  */
 class TaskUserController extends Controller
 {
     /**
-     * @inheritDoc
+     * Access control + HTTP verb rules
      */
-     public function behaviors()
+    public function behaviors()
     {
         return [
+            // Only logged-in users allowed
             'access' => [
-                'class' => \yii\filters\AccessControl::class,
+                'class' => AccessControl::class,
                 'rules' => [
                     [
                         'allow' => true,
@@ -30,8 +34,10 @@ class TaskUserController extends Controller
                     ],
                 ],
             ],
+
+            // Delete allowed via POST / GET
             'verbs' => [
-                'class' => \yii\filters\VerbFilter::class,
+                'class' => VerbFilter::class,
                 'actions' => [
                     'delete' => ['POST', 'GET'],
                 ],
@@ -39,48 +45,60 @@ class TaskUserController extends Controller
         ];
     }
 
-
-
-
     /**
-     * Lists all Task models.
+     * Lists all Task models visible to logged-in user.
      *
-     * @return string
+     * Logic:
+     * - User must be logged in
+     * - Fetch teams where user is member
+     * - Fetch boards of those teams
+     * - Show only tasks belonging to those boards
      */
-public function actionIndex()
-{
-     if (Yii::$app->user->isGuest) {
-        Yii::$app->response->statusCode = 302;
-        return Yii::$app->response->redirect(['/site/login']);
+    public function actionIndex()
+    {
+        // Safety check (extra, even though AccessControl exists)
+        if (Yii::$app->user->isGuest) {
+            Yii::$app->response->statusCode = 302;
+            return Yii::$app->response->redirect(['/site/login']);
+        }
+
+        // Search model for filters
+        $searchModel  = new TaskSearchFrontend();
+        $dataProvider = $searchModel->search($this->request->queryParams);
+
+        $userId = Yii::$app->user->id;
+
+        /* ===============================
+           USER TEAM IDS
+           =============================== */
+        $teamIds = \common\models\TeamMembers::find()
+            ->select('team_id')
+            ->where(['user_id' => $userId])
+            ->column();
+
+        /* ===============================
+           TEAM BOARD IDS
+           =============================== */
+        $boardIds = \common\models\Board::find()
+            ->select('id')
+            ->where(['team_id' => $teamIds])
+            ->column();
+
+        // Restrict tasks to allowed boards only
+        $dataProvider->query->andWhere([
+            'board_id' => $boardIds
+        ]);
+
+        return $this->render('index', compact(
+            'searchModel',
+            'dataProvider'
+        ));
     }
-
-    $searchModel = new TaskSearchFrontend();
-    $dataProvider = $searchModel->search($this->request->queryParams);
-
-    $userId = Yii::$app->user->id;
-
-    $teamIds = \common\models\TeamMembers::find()
-        ->select('team_id')
-        ->where(['user_id' => $userId])
-        ->column();
-
-    $boardIds = \common\models\Board::find()
-        ->select('id')
-        ->where(['team_id' => $teamIds])
-        ->column();
-
-    $dataProvider->query->andWhere(['board_id' => $boardIds]);
-
-    return $this->render('index', compact('searchModel', 'dataProvider'));
-}
-
-
 
     /**
      * Displays a single Task model.
-     * @param int $id
-     * @return string
-     * @throws NotFoundHttpException if the model cannot be found
+     *
+     * @param int $id Task ID
      */
     public function actionView($id)
     {
@@ -91,18 +109,24 @@ public function actionIndex()
 
     /**
      * Creates a new Task model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
-     * @return string|\yii\web\Response
+     * On success redirects to view page.
      */
     public function actionCreate()
     {
         $model = new Task();
 
         if ($this->request->isPost) {
+
+            // Load + save
             if ($model->load($this->request->post()) && $model->save()) {
-                return $this->redirect(['view', 'id' => $model->id]);
+                return $this->redirect([
+                    'view',
+                    'id' => $model->id
+                ]);
             }
+
         } else {
+            // Load default DB values
             $model->loadDefaultValues();
         }
 
@@ -113,32 +137,36 @@ public function actionIndex()
 
     /**
      * Updates an existing Task model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param int $id
-     * @return string|\yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     *
+     * @param int $id Task ID
      */
     public function actionUpdate($id)
-{
-    $model = $this->findModel($id);
-    $model->scenario = 'update';
+    {
+        $model = $this->findModel($id);
 
-    if ($this->request->isPost && $model->load($this->request->post()) && $model->save(false)) {
-        return $this->redirect(['view', 'id' => $model->id]);
+        // Explicit update scenario
+        $model->scenario = 'update';
+
+        if (
+            $this->request->isPost &&
+            $model->load($this->request->post()) &&
+            $model->save(false)          // validation intentionally skipped
+        ) {
+            return $this->redirect([
+                'view',
+                'id' => $model->id
+            ]);
+        }
+
+        return $this->render('update', [
+            'model' => $model,
+        ]);
     }
-
-    return $this->render('update', [
-        'model' => $model,
-    ]);
-}
-
 
     /**
      * Deletes an existing Task model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param int $id
-     * @return \yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     *
+     * @param int $id Task ID
      */
     public function actionDelete($id)
     {
@@ -148,38 +176,49 @@ public function actionIndex()
     }
 
     /**
-     * Finds the Task model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param int $id
-     * @return Task the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
+     * Finds the Task model with ACCESS CHECK.
+     *
+     * Logic:
+     * - Fetch teams of logged-in user
+     * - Fetch boards of those teams
+     * - Allow task access only if it belongs to those boards
+     *
+     * @param int $id Task ID
+     * @return Task
+     * @throws NotFoundHttpException
      */
     protected function findModel($id)
-{
-    $userId = Yii::$app->user->id;
+    {
+        $userId = Yii::$app->user->id;
 
-    // user ke team ids
-    $teamIds = \common\models\TeamMembers::find()
-        ->select('team_id')
-        ->where(['user_id' => $userId])
-        ->column();
+        /* ===============================
+           USER TEAM IDS
+           =============================== */
+        $teamIds = \common\models\TeamMembers::find()
+            ->select('team_id')
+            ->where(['user_id' => $userId])
+            ->column();
 
-    // un teams ke board ids
-    $boardIds = \common\models\Board::find()
-        ->select('id')
-        ->where(['team_id' => $teamIds])
-        ->column();
+        /* ===============================
+           TEAM BOARD IDS
+           =============================== */
+        $boardIds = \common\models\Board::find()
+            ->select('id')
+            ->where(['team_id' => $teamIds])
+            ->column();
 
-    $model = Task::find()
-        ->where(['id' => $id])
-        ->andWhere(['board_id' => $boardIds])
-        ->one();
+        /* ===============================
+           TASK FETCH WITH SECURITY
+           =============================== */
+        $model = Task::find()
+            ->where(['id' => $id])
+            ->andWhere(['board_id' => $boardIds])
+            ->one();
 
-    if ($model === null) {
-        throw new \yii\web\NotFoundHttpException();
+        if ($model === null) {
+            throw new NotFoundHttpException();
+        }
+
+        return $model;
     }
-
-    return $model;
-}
-
 }

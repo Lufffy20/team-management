@@ -8,9 +8,17 @@ use common\models\Task;
 use yii\data\ActiveDataProvider;
 use yii\filters\AccessControl;
 
+/**
+ * ActivityController
+ *
+ * Shows recent task-related activities for the logged-in user.
+ */
 class ActivityController extends Controller
 {
-
+    /**
+     * Access control configuration.
+     * Only authenticated users can access the index action.
+     */
     public function behaviors()
     {
         return [
@@ -27,38 +35,50 @@ class ActivityController extends Controller
         ];
     }
 
+    /**
+     * Displays recent activities for the current user.
+     *
+     * Logic:
+     * 1) Get teams where the user is a member
+     * 2) Get boards belonging to those teams
+     * 3) Fetch tasks either created by the user
+     *    or belonging to those boards
+     */
     public function actionIndex()
     {
-        $userId = Yii::$app->user->id;
+        $userId = Yii::$app->user->id; // current user ID
 
-        // User ke teams ka data lao
+        /* ================= USER TEAMS ================= */
         $teamIds = \common\models\TeamMembers::find()
             ->select('team_id')
-            ->where(['user_id' => $userId])
+            ->where(['user_id' => $userId]) // teams of this user
             ->column();
 
-        // Un teams ki boards lao
+        /* ================= TEAM BOARDS ================= */
         $teamBoards = \common\models\Board::find()
             ->select('id')
-            ->where(['team_id' => $teamIds])
+            ->where(['team_id' => $teamIds]) // boards under user teams
             ->column();
 
-        // Recent activities query
+        /* ================= ACTIVITY QUERY ================= */
         $query = Task::find()
             ->where([
                 'or',
-                ['created_by' => $userId],
-                ['board_id' => $teamBoards]
+                ['created_by' => $userId],     // tasks created by user
+                ['board_id'   => $teamBoards], // tasks in user's team boards
             ])
-            ->orderBy(['updated_at' => SORT_DESC]);
+            ->orderBy(['updated_at' => SORT_DESC]); // latest first
 
+        /* ================= DATA PROVIDER ================= */
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
-            'pagination' => ['pageSize' => 20],
+            'pagination' => [
+                'pageSize' => 20, // records per page
+            ],
         ]);
 
         return $this->render('index', [
-            'dataProvider' => $dataProvider
+            'dataProvider' => $dataProvider,
         ]);
     }
 }

@@ -6,277 +6,348 @@ use Yii;
 use yii\web\Controller;
 use yii\web\Response;
 use yii\filters\AccessControl;
+use yii\web\NotFoundHttpException;
+use yii\web\UploadedFile;
+
 use common\models\Task;
 use common\models\User;
+use common\models\Board;
 use common\models\KanbanColumn;
 use common\models\Subtask;
-use common\models\Board;
-use yii\web\NotFoundHttpException;
-use common\components\Logger;
-use yii\web\UploadedFile;
 use common\models\TaskImage;
 use common\models\TaskAttachment;
 use common\models\ActivityLog;
+use common\components\Logger;
 
+/**
+ * TaskController
+ *
+ * Handles Kanban board, task drag-drop,
+ * AJAX task creation and permissions.
+ */
 class TaskController extends Controller
 {
+    /**
+     * Access control
+     * Only logged-in users are allowed
+     */
     public function behaviors()
-{
-    return [
-        'access' => [
-            'class' => AccessControl::class,
-            'rules' => [
-                [
-                    'allow' => true,
-                    'roles' => ['@'],
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'], // authentication required
+                    ],
                 ],
             ],
-        ],
-    ];
-}
-
-
-    public function beforeAction($action)
-{
-    if (Yii::$app->request->isAjax) {
-        $this->enableCsrfValidation = false;
-    }
-    return parent::beforeAction($action);
-}
-
-
-    // ===============================
-    // KANBAN BOARD
-    // ===============================
-public function actionKanban()
-{
-
-    if (Yii::$app->user->isGuest) {
-        throw new \yii\web\ForbiddenHttpException();
-    }
-
-    $session = Yii::$app->session;
-
-    // If user selected board → save it
-    if ($id = Yii::$app->request->get('board_id')) {
-        $session->set('last_board', $id);
-    }
-
-    // Fetch all boards available to user
-    $teamBoards = \common\models\TeamMembers::find()
-        ->select('team_id')
-        ->where(['user_id' => Yii::$app->user->id])
-        ->column();
-
-    $boards = Board::find()
-        ->where(['created_by' => Yii::$app->user->id])
-        ->orWhere(['team_id' => $teamBoards])
-        ->all();
-
-    //  If no boards exist → show create UI
-    if (!$boards) {
-        return $this->render('kanban'); // <-- एक नया empty page बनाओ simple
-    }
-
-    // Load board id from session OR default to first available
-    $boardId = $session->get('last_board', $boards[0]->id); // FIXED HERE 🚀
-
-    $board = Board::findOne($boardId);
-    if (!$board) {
-        $boardId = $boards[0]->id;  // FALLBACK
-        $board = Board::findOne($boardId);
-    }
-
-    // Detect Role
-    $role = "guest";
-    if ($board->created_by == Yii::$app->user->id) {
-        $role = "owner";
-    } else {
-        $tm = \common\models\TeamMembers::findOne([
-            'team_id' => $board->team_id,
-            'user_id' => Yii::$app->user->id
-        ]);
-        if ($tm) $role = $tm->role;
-    }
-
-    // Columns + Tasks
-    $columns = KanbanColumn::find()->where(['board_id'=>$boardId])->orderBy(['position'=>SORT_ASC])->all();
-    $tasks = Task::find()->where(['board_id'=>$boardId])->orderBy(['sort_order'=>SORT_ASC])->all();
-
-    $grouped = [];
-    foreach($tasks as $task) $grouped[$task->status][] = $task;
-
-    return $this->render('kanban', [
-    'boardId' => $boardId,   //  MUST BE EXACTLY THIS NAME
-    'board'   => $board,
-    'columns' => $columns,
-    'tasks'   => $grouped,
-    'role'    => $role
-]);
-
-}
-
-
-    // ===============================
-    // UPDATE STATUS (TASK DRAG)
-    // ===============================
-public function actionUpdateStatus()
-{
-    Yii::$app->response->format = Response::FORMAT_JSON;
-
-    $taskIds = Yii::$app->request->post('tasks');
-    $boardId = Yii::$app->request->post('board_id');
-    $status  = Yii::$app->request->post('status');
-    $movedId = Yii::$app->request->post('moved_id');
-
-    if (empty($taskIds) || !is_array($taskIds)) {
-        return ['success' => false, 'message' => 'Tasks array missing'];
-    }
-
-    $board = \common\models\Board::findOne($boardId);
-    if (!$board) {
-        return ['success' => false, 'message' => 'Board not found'];
-    }
-
-    /* ===============================
-        ACCESS CONTROL (FIXED)
-       =============================== */
-
-    //  Owner always allowed (solo OR team board)
-    $isOwner = ($board->created_by == Yii::$app->user->id);
-
-    //  Team member allowed (only if board has team)
-    $isMember = false;
-    if ($board->team_id) {
-        $isMember = \common\models\TeamMembers::find()
-            ->where([
-                'team_id' => $board->team_id,
-                'user_id' => Yii::$app->user->id
-            ])
-            ->exists();
-    }
-
-    //  Outsider blocked
-    if (!$isOwner && !$isMember) {
-        return ['success' => false, 'message' => 'Access denied'];
-    }
-
-    /* ===============================
-    STATUS UPDATE (ONLY MOVED TASK)
-       =============================== */
-    if ($movedId && $status) {
-        Task::updateAll(
-            ['status' => $status],
-            ['id' => $movedId, 'board_id' => $boardId]
-        );
-    }
-
-    /* ===============================
-        SORT ORDER UPDATE (DEST COLUMN)
-       =============================== */
-    foreach ($taskIds as $index => $taskId) {
-
-        $task = Task::findOne([
-            'id'       => $taskId,
-            'board_id' => $boardId
-        ]);
-
-        if (!$task) {
-            continue;
-        }
-
-        $task->sort_order = $index + 1;
-        $task->save(false);
-    }
-
-    return ['success' => true];
-}
-
-
-
-
-
-   // ===============================
-// CREATE NEW TASK (AJAX)
-// ===============================
-public function actionCreateAjax()
-{
-    Yii::$app->response->format = Response::FORMAT_JSON;
-
-    $model = new Task();
-    $data  = Yii::$app->request->post();
-
-    // BASIC DEFAULTS
-    $model->created_by = Yii::$app->user->id;
-    $model->board_id   = $data['Task']['board_id']
-        ?? Yii::$app->session->get('last_board');
-
-    $model->status = $data['Task']['status']
-        ?? Task::STATUS_TODO;
-
-    if ($model->load($data)) {
-
-        // SORT ORDER (after load)
-        $lastOrder = Task::find()
-            ->where([
-                'board_id' => $model->board_id,
-                'status'   => $model->status
-            ])
-            ->max('sort_order');
-
-        $model->sort_order = $lastOrder ? $lastOrder + 1 : 1;
-
-        // ATTACHMENTS
-        $model->attachmentFiles = UploadedFile::getInstances(
-            $model,
-            'attachmentFiles'
-        );
-
-        // VALIDATION
-        if (!$model->validate()) {
-            return [
-                'success' => false,
-                'errors'  => $model->getErrors()
-            ];
-        }
-
-        // SAVE MODEL (validation already done)
-        $model->save(false);
-
-        // SAVE ATTACHMENTS
-        if (!empty($model->attachmentFiles)) {
-            foreach ($model->attachmentFiles as $file) {
-                $fileName   = 'task_' . $model->id . '_' . uniqid() . '.' . $file->extension;
-                $uploadPath = Yii::getAlias('@webroot/uploads/tasks/') . $fileName;
-
-                if ($file->saveAs($uploadPath)) {
-                    $att = new TaskAttachment();
-                    $att->task_id = $model->id;
-                    $att->file    = $fileName;
-                    $att->save(false);
-                }
-            }
-        }
-
-        Logger::add(
-            "Task Created",
-            "Task #{$model->id}: {$model->title}",
-            $model->board->team_id,
-            $model->board_id
-        );
-
-        return [
-            'success' => true,
-            'status'  => $model->status,
-            'html'    => $this->renderPartial('taskcard', [
-                'model' => $model
-            ]),
         ];
     }
 
-    return ['success' => false, 'msg' => 'Load failed'];
-}
+    /**
+     * Disable CSRF for AJAX requests
+     * Required for drag-drop & AJAX forms
+     */
+    public function beforeAction($action)
+    {
+        if (Yii::$app->request->isAjax) {
+            $this->enableCsrfValidation = false;
+        }
+        return parent::beforeAction($action);
+    }
 
+    // ===============================
+    // KANBAN BOARD VIEW
+    // ===============================
+    public function actionKanban()
+    {
+        // Guest users not allowed
+        if (Yii::$app->user->isGuest) {
+            throw new \yii\web\ForbiddenHttpException();
+        }
+
+        $session = Yii::$app->session;
+
+        // If user selected a board, store it in session
+        if ($id = Yii::$app->request->get('board_id')) {
+            $session->set('last_board', $id);
+        }
+
+        /* ===============================
+           FETCH BOARDS ACCESSIBLE TO USER
+           =============================== */
+
+        // Get team IDs where user is a member
+        $teamBoards = \common\models\TeamMembers::find()
+            ->select('team_id')
+            ->where(['user_id' => Yii::$app->user->id])
+            ->column();
+
+        // Boards created by user OR team boards
+        $boards = Board::find()
+            ->where(['created_by' => Yii::$app->user->id])
+            ->orWhere(['team_id' => $teamBoards])
+            ->all();
+
+        // If no boards exist, show empty Kanban UI
+        if (!$boards) {
+            return $this->render('kanban'); // empty board screen
+        }
+
+        /* ===============================
+           LOAD ACTIVE BOARD
+           =============================== */
+
+        // Load last selected board OR fallback to first board
+        $boardId = $session->get('last_board', $boards[0]->id);
+
+        $board = Board::findOne($boardId);
+        if (!$board) {
+            $boardId = $boards[0]->id; // fallback
+            $board = Board::findOne($boardId);
+        }
+
+        /* ===============================
+           DETERMINE USER ROLE
+           =============================== */
+
+        $role = "guest";
+
+        // Board owner
+        if ($board->created_by == Yii::$app->user->id) {
+            $role = "owner";
+        } else {
+            // Team member role
+            $tm = \common\models\TeamMembers::findOne([
+                'team_id' => $board->team_id,
+                'user_id' => Yii::$app->user->id
+            ]);
+            if ($tm) {
+                $role = $tm->role;
+            }
+        }
+
+        /* ===============================
+           LOAD COLUMNS & TASKS
+           =============================== */
+
+        // Kanban columns ordered by position
+        $columns = KanbanColumn::find()
+            ->where(['board_id' => $boardId])
+            ->orderBy(['position' => SORT_ASC])
+            ->all();
+
+        // Tasks ordered by sort order
+        $tasks = Task::find()
+            ->where(['board_id' => $boardId])
+            ->orderBy(['sort_order' => SORT_ASC])
+            ->all();
+
+        // Group tasks by status
+        $grouped = [];
+        foreach ($tasks as $task) {
+            $grouped[$task->status][] = $task;
+        }
+
+        return $this->render('kanban', [
+            'boardId' => $boardId,   // MUST MATCH VIEW VARIABLE
+            'board'   => $board,
+            'columns' => $columns,
+            'tasks'   => $grouped,
+            'role'    => $role
+        ]);
+    }
+
+    // ===============================
+    // UPDATE TASK STATUS (DRAG & DROP)
+    // ===============================
+    public function actionUpdateStatus()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        // Incoming data
+        $taskIds = Yii::$app->request->post('tasks');     // ordered task IDs
+        $boardId = Yii::$app->request->post('board_id'); // board ID
+        $status  = Yii::$app->request->post('status');   // new status
+        $movedId = Yii::$app->request->post('moved_id'); // dragged task ID
+
+        // Validation: tasks must be array
+        if (empty($taskIds) || !is_array($taskIds)) {
+            return ['success' => false, 'message' => 'Tasks array missing'];
+        }
+
+        // Validate board
+        $board = Board::findOne($boardId);
+        if (!$board) {
+            return ['success' => false, 'message' => 'Board not found'];
+        }
+
+        /* ===============================
+           ACCESS CONTROL
+           =============================== */
+
+        // Owner always allowed
+        $isOwner = ($board->created_by == Yii::$app->user->id);
+
+        // Team member allowed if board belongs to a team
+        $isMember = false;
+        if ($board->team_id) {
+            $isMember = \common\models\TeamMembers::find()
+                ->where([
+                    'team_id' => $board->team_id,
+                    'user_id' => Yii::$app->user->id
+                ])
+                ->exists();
+        }
+
+        // Block outsiders
+        if (!$isOwner && !$isMember) {
+            return ['success' => false, 'message' => 'Access denied'];
+        }
+
+        /* ===============================
+           UPDATE TASK STATUS
+           =============================== */
+
+        // Update only the moved task's status
+        if ($movedId && $status) {
+            Task::updateAll(
+                ['status' => $status],
+                ['id' => $movedId, 'board_id' => $boardId]
+            );
+        }
+
+        /* ===============================
+           UPDATE SORT ORDER
+           =============================== */
+
+        foreach ($taskIds as $index => $taskId) {
+
+            $task = Task::findOne([
+                'id'       => $taskId,
+                'board_id' => $boardId
+            ]);
+
+            if (!$task) {
+                continue; // skip invalid task
+            }
+
+            // Set new order (1-based index)
+            $task->sort_order = $index + 1;
+            $task->save(false);
+        }
+
+        return ['success' => true];
+    }
+
+    // ===============================
+    // CREATE NEW TASK (AJAX)
+    // ===============================
+    public function actionCreateAjax()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+
+        $model = new Task();
+        $data  = Yii::$app->request->post();
+
+        /* ===============================
+           DEFAULT VALUES
+           =============================== */
+
+        $model->created_by = Yii::$app->user->id;
+
+        // Board ID from form OR last selected board
+        $model->board_id = $data['Task']['board_id']
+            ?? Yii::$app->session->get('last_board');
+
+        // Default status
+        $model->status = $data['Task']['status']
+            ?? Task::STATUS_TODO;
+
+        if ($model->load($data)) {
+
+            /* ===============================
+               SORT ORDER CALCULATION
+               =============================== */
+
+            $lastOrder = Task::find()
+                ->where([
+                    'board_id' => $model->board_id,
+                    'status'   => $model->status
+                ])
+                ->max('sort_order');
+
+            $model->sort_order = $lastOrder ? $lastOrder + 1 : 1;
+
+            /* ===============================
+               ATTACHMENTS
+               =============================== */
+
+            $model->attachmentFiles = UploadedFile::getInstances(
+                $model,
+                'attachmentFiles'
+            );
+
+            /* ===============================
+               VALIDATION
+               =============================== */
+
+            if (!$model->validate()) {
+                return [
+                    'success' => false,
+                    'errors'  => $model->getErrors()
+                ];
+            }
+
+            /* ===============================
+               SAVE TASK
+               =============================== */
+
+            $model->save(false);
+
+            /* ===============================
+               SAVE ATTACHMENTS
+               =============================== */
+
+            if (!empty($model->attachmentFiles)) {
+                foreach ($model->attachmentFiles as $file) {
+
+                    $fileName   = 'task_' . $model->id . '_' . uniqid() . '.' . $file->extension;
+                    $uploadPath = Yii::getAlias('@webroot/uploads/tasks/') . $fileName;
+
+                    if ($file->saveAs($uploadPath)) {
+                        $att = new TaskAttachment();
+                        $att->task_id = $model->id;
+                        $att->file    = $fileName;
+                        $att->save(false);
+                    }
+                }
+            }
+
+            /* ===============================
+               ACTIVITY LOG
+               =============================== */
+
+            Logger::add(
+                "Task Created",
+                "Task #{$model->id}: {$model->title}",
+                $model->board->team_id,
+                $model->board_id
+            );
+
+            return [
+                'success' => true,
+                'status'  => $model->status,
+                'html'    => $this->renderPartial('taskcard', [
+                    'model' => $model
+                ]),
+            ];
+        }
+
+        return ['success' => false, 'msg' => 'Load failed'];
+    }
 
     // ===============================
     // LOAD TASK DETAILS
@@ -527,43 +598,55 @@ protected function findModel($id)
     return ['success' => true, 'msg' => 'Column order updated'];
 }
 
+// ===============================
+// SUBTASK LOGIC START
+// ===============================
 
-
-    
-    // subtask logic start header_register_callback
-
-  /************* ADD SUBTASK *************/
+/************* ADD SUBTASK *************/
 public function actionAddSubtask($task_id)
 {
+    // New subtask model
     $subtask = new Subtask();
+
+    // Parent task reference
     $subtask->task_id = $task_id;
-    $subtask->title   = Yii::$app->request->post('title');
 
+    // Subtask title from POST
+    $subtask->title = Yii::$app->request->post('title');
 
-    
+    // Save subtask
     if ($subtask->save()) {
+        // Success message
         Yii::$app->session->setFlash('success', 'Subtask added');
     }
 
-    
-
-    return $this->redirect(['task/update', 'id' => $task_id]);
+    // Redirect back to task update page
+    return $this->redirect([
+        'task/update',
+        'id' => $task_id
+    ]);
 }
 
 
-
-
+/************* TOGGLE SUBTASK STATUS *************/
 public function actionToggleSubtask($id)
 {
+    // JSON response (AJAX)
     Yii::$app->response->format = Response::FORMAT_JSON;
 
+    // Find subtask
     $m = Subtask::findOne($id);
     if (!$m) {
-        return ['success' => false, 'msg' => 'Subtask not found'];
+        return [
+            'success' => false,
+            'msg' => 'Subtask not found'
+        ];
     }
 
+    // Toggle status (done / pending)
     $m->is_done = ($m->is_done == 1) ? 0 : 1;
 
+    // Save without validation
     if (!$m->save(false)) {
         return [
             'success' => false,
@@ -571,13 +654,13 @@ public function actionToggleSubtask($id)
         ];
     }
 
+    /* ===== ACTIVITY LOG ===== */
     Logger::add(
-    "Subtask Updated",
-    "Subtask #{$id} → " . ($m->is_done ? "Completed" : "Pending"),
-    $m->task->board->team_id,
-    $m->task->board_id
-);
-
+        "Subtask Updated",
+        "Subtask #{$id} → " . ($m->is_done ? "Completed" : "Pending"),
+        $m->task->board->team_id,
+        $m->task->board_id
+    );
 
     return [
         'success' => true,
@@ -586,37 +669,46 @@ public function actionToggleSubtask($id)
 }
 
 
-/************* DELETE *************/
+/************* DELETE SUBTASK *************/
 public function actionDeleteSubtask($id)
-    {
-        Yii::$app->response->format = Response::FORMAT_JSON;
+{
+    // JSON response
+    Yii::$app->response->format = Response::FORMAT_JSON;
 
-        $m = Subtask::findOne($id);
-        if(!$m) return ['success'=>false];
-
-        // ACTIVITY LOG
-        Logger::add(
-    "Subtask Deleted",
-    "Subtask #{$id}",
-    $m->task->board->team_id,
-    $m->task->board_id
-);
-
-
-
-        $m->delete();
-        return ['success'=>true];
+    // Find subtask
+    $m = Subtask::findOne($id);
+    if (!$m) {
+        return ['success' => false];
     }
 
+    /* ===== ACTIVITY LOG ===== */
+    Logger::add(
+        "Subtask Deleted",
+        "Subtask #{$id}",
+        $m->task->board->team_id,
+        $m->task->board_id
+    );
 
-    public function actionAll()
+    // Delete subtask
+    $m->delete();
+
+    return ['success' => true];
+}
+
+
+// ===============================
+// ALL TASKS (CREATED BY USER)
+// ===============================
+public function actionAll()
 {
     $userId = Yii::$app->user->id;
 
+    // Fetch tasks created by current user
     $query = \common\models\Task::find()
         ->where(['created_by' => $userId])
         ->orderBy(['created_at' => SORT_DESC]);
 
+    // Pagination enabled
     $dataProvider = new \yii\data\ActiveDataProvider([
         'query' => $query,
         'pagination' => ['pageSize' => 10],
@@ -628,61 +720,89 @@ public function actionDeleteSubtask($id)
 }
 
 
+// ===============================
+// DELETE TASK IMAGE
+// ===============================
 public function actionDeleteImage($id)
 {
+    // Find image record
     $img = \common\models\TaskImage::findOne($id);
     if (!$img) {
         throw new \yii\web\NotFoundHttpException();
     }
 
-    // delete file
+    // Delete physical file
     $file = Yii::getAlias('@webroot/uploads/tasks/') . $img->image;
     if (file_exists($file)) {
         unlink($file);
     }
 
+    // Delete DB record
     $img->delete();
 
-    // SAME PAGE PAR REDIRECT
+    // Redirect to same page
     return $this->redirect(Yii::$app->request->referrer);
 }
 
+
+// ===============================
+// DELETE ATTACHMENT
+// ===============================
 public function actionDeleteAttachment($id)
 {
+    // Find attachment
     $attach = TaskAttachment::findOne($id);
     if (!$attach) {
         throw new NotFoundHttpException();
     }
 
+    // Delete physical file
     $file = Yii::getAlias('@webroot/uploads/tasks/') . $attach->file;
     if (file_exists($file)) {
         unlink($file);
     }
 
+    // Store task ID for redirect
     $taskId = $attach->task_id;
+
+    // Delete DB record
     $attach->delete();
 
-    Yii::$app->session->setFlash('success', 'Attachment deleted');
-    return $this->redirect(['task/update', 'id' => $taskId]);
+    Yii::$app->session->setFlash(
+        'success',
+        'Attachment deleted'
+    );
+
+    return $this->redirect([
+        'task/update',
+        'id' => $taskId
+    ]);
 }
 
+
+// ===============================
+// ADD COMMENT TO TASK
+// ===============================
 public function actionAddComment($id)
 {
+    // Fetch task
     $task = $this->findModel($id);
 
-    $commentText = trim(Yii::$app->request->post('comment'));
+    // Trim comment text
+    $commentText = trim(
+        Yii::$app->request->post('comment')
+    );
 
     if ($commentText) {
 
+        // Create new comment
         $comment = new \common\models\TaskComment();
         $comment->task_id = $task->id;
         $comment->user_id = Yii::$app->user->id;
         $comment->comment = $commentText;
         $comment->save(false);
 
-        /* ===============================
-        COMMENT ACTIVITY
-        =============================== */
+        /* ===== COMMENT ACTIVITY ===== */
         $user = Yii::$app->user->identity;
 
         Logger::add(
@@ -692,22 +812,31 @@ public function actionAddComment($id)
             $task->board_id
         );
 
-        /* ===============================
-        COMMENT EMAIL NOTIFICATION
-        =============================== */
+        /* ===== COMMENT EMAIL ===== */
         $this->sendCommentMail($task, $comment);
     }
 
-    return $this->redirect(['task/update', 'id' => $task->id]);
+    return $this->redirect([
+        'task/update',
+        'id' => $task->id
+    ]);
 }
 
+
+/**
+ * SEND COMMENT EMAIL
+ */
 protected function sendCommentMail($task, $comment)
 {
-    $assignee = $task->assignee;
-    $commenter = $comment->user;
+    $assignee  = $task->assignee;   // task assignee
+    $commenter = $comment->user;    // comment author
 
-    // No assignee OR self comment
-    if (!$assignee || !$assignee->email || $assignee->id == $commenter->id) {
+    // No assignee OR self-comment → no mail
+    if (
+        !$assignee ||
+        !$assignee->email ||
+        $assignee->id == $commenter->id
+    ) {
         return;
     }
 
@@ -720,56 +849,86 @@ protected function sendCommentMail($task, $comment)
         ]
     )
     ->setTo($assignee->email)
-    ->setFrom([Yii::$app->params['adminEmail'] => 'Task Manager'])
+    ->setFrom([
+        Yii::$app->params['adminEmail'] => 'Task Manager'
+    ])
     ->setSubject(
-        '💬 New Comment by ' . $commenter->username . ' on Task: ' . $task->title
+        '💬 New Comment by ' .
+        $commenter->username .
+        ' on Task: ' .
+        $task->title
     )
     ->send();
 }
 
+
+// ===============================
+// UPLOAD ATTACHMENT (LIMITED)
+// ===============================
 public function actionUploadAttachment($id)
 {
+    // Fetch task
     $task = $this->findModel($id);
 
-    $task->attachmentFiles = UploadedFile::getInstances($task, 'attachmentFiles');
+    // Get uploaded files
+    $task->attachmentFiles = UploadedFile::getInstances(
+        $task,
+        'attachmentFiles'
+    );
 
-    // ===== FILE COUNT CHECK (DB + NEW) =====
+    /* ===== FILE COUNT CHECK ===== */
     $existingCount = TaskAttachment::find()
         ->where(['task_id' => $task->id])
         ->count();
 
+    // Max 5 attachments allowed
     if (($existingCount + count($task->attachmentFiles)) > 5) {
         Yii::$app->session->setFlash(
             'error',
             'Max 5 attachments allowed per task.'
         );
-        return $this->redirect(['task/update', 'id' => $task->id]);
+        return $this->redirect([
+            'task/update',
+            'id' => $task->id
+        ]);
     }
 
-    // MODEL VALIDATION (total 10MB check)
+    /* ===== VALIDATION (TOTAL SIZE ETC) ===== */
     if (!$task->validate(['attachmentFiles'])) {
         Yii::$app->session->setFlash(
             'error',
             implode('<br>', $task->getFirstErrors())
         );
-        return $this->redirect(['task/update', 'id' => $task->id]);
+        return $this->redirect([
+            'task/update',
+            'id' => $task->id
+        ]);
     }
 
-    // ===== UPLOAD =====
+    /* ===== UPLOAD ===== */
     $task->uploadAttachments();
-    Yii::$app->session->setFlash('success', 'Attachment uploaded');
 
-    return $this->redirect(['task/update', 'id' => $task->id]);
+    Yii::$app->session->setFlash(
+        'success',
+        'Attachment uploaded'
+    );
+
+    return $this->redirect([
+        'task/update',
+        'id' => $task->id
+    ]);
 }
 
 
-
-
+// ===============================
+// VIEW TASK (READ-ONLY PAGE)
+// ===============================
 public function actionView($id)
 {
+    // Fetch task
     $model = $this->findModel($id);
 
-    //  Activity fetch
+    // Fetch all related activities
     $activities = ActivityLog::find()
         ->where([
             'model'    => 'task',
@@ -779,7 +938,7 @@ public function actionView($id)
         ->all();
 
     return $this->render('view', [
-        'model' => $model,
+        'model'      => $model,
         'activities' => $activities,
     ]);
 }

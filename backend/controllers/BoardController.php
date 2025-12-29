@@ -10,11 +10,16 @@ use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 
 /**
- * BoardController implements the CRUD actions for Board model.
+ * BoardController
+ *
+ * Implements CRUD actions for the Board model.
  */
 class BoardController extends Controller
 {
     /**
+     * Defines controller behaviors.
+     * Restricts delete action to POST requests only.
+     *
      * @inheritDoc
      */
     public function behaviors()
@@ -25,7 +30,7 @@ class BoardController extends Controller
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
-                        'delete' => ['POST'],
+                        'delete' => ['POST'], // allow delete only via POST
                     ],
                 ],
             ]
@@ -33,25 +38,25 @@ class BoardController extends Controller
     }
 
     /**
-     * Lists all Board models.
+     * Lists all Board models with search and filter support.
      *
      * @return string
      */
     public function actionIndex()
-{
-    $searchModel = new BoardSearch();
-    $dataProvider = $searchModel->search($this->request->queryParams);
+    {
+        $searchModel  = new BoardSearch();
+        $dataProvider = $searchModel->search($this->request->queryParams);
 
-    return $this->render('index', [
-        'searchModel' => $searchModel,
-        'dataProvider' => $dataProvider,
-    ]);
-}
-
+        return $this->render('index', [
+            'searchModel'  => $searchModel,
+            'dataProvider'=> $dataProvider,
+        ]);
+    }
 
     /**
      * Displays a single Board model.
-     * @param int $id
+     *
+     * @param int $id Board ID
      * @return string
      * @throws NotFoundHttpException if the model cannot be found
      */
@@ -64,7 +69,8 @@ class BoardController extends Controller
 
     /**
      * Creates a new Board model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
+     * On success, redirects to the view page.
+     *
      * @return string|\yii\web\Response
      */
     public function actionCreate()
@@ -76,6 +82,7 @@ class BoardController extends Controller
                 return $this->redirect(['view', 'id' => $model->id]);
             }
         } else {
+            // load default values for new record
             $model->loadDefaultValues();
         }
 
@@ -86,8 +93,9 @@ class BoardController extends Controller
 
     /**
      * Updates an existing Board model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param int $id
+     * On success, redirects to the view page.
+     *
+     * @param int $id Board ID
      * @return string|\yii\web\Response
      * @throws NotFoundHttpException if the model cannot be found
      */
@@ -95,7 +103,11 @@ class BoardController extends Controller
     {
         $model = $this->findModel($id);
 
-        if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
+        if (
+            $this->request->isPost &&
+            $model->load($this->request->post()) &&
+            $model->save()
+        ) {
             return $this->redirect(['view', 'id' => $model->id]);
         }
 
@@ -106,8 +118,9 @@ class BoardController extends Controller
 
     /**
      * Deletes an existing Board model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param int $id
+     * Redirects to the index page after deletion.
+     *
+     * @param int $id Board ID
      * @return \yii\web\Response
      * @throws NotFoundHttpException if the model cannot be found
      */
@@ -119,10 +132,10 @@ class BoardController extends Controller
     }
 
     /**
-     * Finds the Board model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param int $id
-     * @return Board the loaded model
+     * Finds the Board model by its primary key.
+     *
+     * @param int $id Board ID
+     * @return Board
      * @throws NotFoundHttpException if the model cannot be found
      */
     protected function findModel($id)

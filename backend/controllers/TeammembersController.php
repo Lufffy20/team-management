@@ -2,7 +2,6 @@
 
 namespace backend\controllers;
 
-
 use Yii;
 use common\models\TeamMembers;
 use backend\models\TeamMembersSearch;
@@ -11,11 +10,16 @@ use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 
 /**
- * TeammembersController implements the CRUD actions for TeamMembers model.
+ * TeammembersController
+ *
+ * Implements CRUD actions for the TeamMembers model.
  */
 class TeammembersController extends Controller
 {
     /**
+     * Defines controller behaviors.
+     * Restricts delete action to POST requests only.
+     *
      * @inheritDoc
      */
     public function behaviors()
@@ -26,7 +30,7 @@ class TeammembersController extends Controller
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
-                        'delete' => ['POST'],
+                        'delete' => ['POST'], // delete allowed only via POST
                     ],
                 ],
             ]
@@ -34,77 +38,96 @@ class TeammembersController extends Controller
     }
 
     /**
-     * Lists all TeamMembers models.
+     * Lists all TeamMembers models with search and pagination.
      *
      * @return string
      */
     public function actionIndex()
     {
-        $searchModel = new TeamMembersSearch();
-        $dataProvider = $searchModel->search($this->request->queryParams);
+        $searchModel  = new TeamMembersSearch(); // search model
+        $dataProvider = $searchModel->search(
+            $this->request->queryParams // GET params
+        );
 
+        // Set pagination size
         $dataProvider->pagination->pageSize = 5;
 
         return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+            'searchModel'  => $searchModel,   // filter form
+            'dataProvider'=> $dataProvider,  // grid/list data
         ]);
     }
 
     /**
      * Displays a single TeamMembers model.
-     * @param int $id
+     *
+     * @param int $id Team member ID
      * @return string
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if model not found
      */
     public function actionView($id)
     {
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model' => $this->findModel($id), // load team member
         ]);
     }
 
     /**
      * Creates a new TeamMembers model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
+     * User is automatically linked using email.
+     *
      * @return string|\yii\web\Response
      */
     public function actionCreate()
-{
-    $model = new TeamMembers();
+    {
+        $model = new TeamMembers(); // new team member
 
-    if ($model->load(Yii::$app->request->post())) {
+        if ($model->load(Yii::$app->request->post())) {
 
-        // Find user by email
-        $user = \common\models\User::find()->where(['email' => $model->email])->one();
+            // Find user by entered email
+            $user = \common\models\User::find()
+                ->where(['email' => $model->email])
+                ->one();
 
-        if ($user) {
-            $model->user_id = $user->id; // Set user_id automatically
+            if ($user) {
+                // Automatically assign user_id
+                $model->user_id = $user->id;
 
-            if ($model->save()) {
-                Yii::$app->session->setFlash('success', 'Team member added.');
-                return $this->redirect(['index']);
+                if ($model->save()) {
+                    Yii::$app->session->setFlash(
+                        'success',
+                        'Team member added.'
+                    );
+                    return $this->redirect(['index']);
+                }
             }
         }
+
+        return $this->render('create', [
+            'model' => $model,
+        ]);
     }
-
-    return $this->render('create', ['model' => $model]);
-}
-
 
     /**
      * Updates an existing TeamMembers model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param int $id
+     *
+     * @param int $id Team member ID
      * @return string|\yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if model not found
      */
     public function actionUpdate($id)
     {
-        $model = $this->findModel($id);
+        $model = $this->findModel($id); // existing team member
 
-        if ($this->request->isPost && $model->load($this->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+        if (
+            $this->request->isPost &&
+            $model->load($this->request->post()) &&
+            $model->save()
+        ) {
+            return $this->redirect([
+                'view',
+                'id' => $model->id,
+            ]);
         }
 
         return $this->render('update', [
@@ -114,50 +137,62 @@ class TeammembersController extends Controller
 
     /**
      * Deletes an existing TeamMembers model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param int $id
+     * Redirects to index after deletion.
+     *
+     * @param int $id Team member ID
      * @return \yii\web\Response
-     * @throws NotFoundHttpException if the model cannot be found
+     * @throws NotFoundHttpException if model not found
      */
     public function actionDelete($id)
     {
-        $this->findModel($id)->delete();
-
+        $this->findModel($id)->delete(); // delete team member
         return $this->redirect(['index']);
     }
 
     /**
-     * Finds the TeamMembers model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param int $id
-     * @return TeamMembers the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
+     * Finds the TeamMembers model by primary key.
+     *
+     * @param int $id Team member ID
+     * @return TeamMembers
+     * @throws NotFoundHttpException if model not found
      */
     protected function findModel($id)
     {
         if (($model = TeamMembers::findOne(['id' => $id])) !== null) {
-            return $model;
+            return $model; // return found record
         }
 
-        throw new NotFoundHttpException('The requested page does not exist.');
+        throw new NotFoundHttpException(
+            'The requested page does not exist.'
+        );
     }
 
+    /**
+     * AJAX user search by email.
+     * Used for autocomplete/select dropdowns.
+     *
+     * @param string|null $q Search query
+     * @return array JSON response
+     */
     public function actionSearchUser($q = null)
-{
-    Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+    {
+        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
 
-    $users = \common\models\User::find()
-        ->where(['like', 'email', $q])
-        ->limit(20)
-        ->all();
+        // Find users matching email
+        $users = \common\models\User::find()
+            ->where(['like', 'email', $q])
+            ->limit(20)
+            ->all();
 
-    $results = [];
+        $results = [];
 
-    foreach ($users as $user) {
-        $results[] = ['id' => $user->id, 'text' => $user->email];
+        foreach ($users as $user) {
+            $results[] = [
+                'id'   => $user->id,
+                'text' => $user->email,
+            ];
+        }
+
+        return ['results' => $results];
     }
-
-    return ['results' => $results];
-}
-
 }
