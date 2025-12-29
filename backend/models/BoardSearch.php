@@ -63,6 +63,7 @@ class BoardSearch extends Board
     public function search($params, $formName = null)
     {
         // Base query with alias
+        $pageSize = $params['per-page'] ?? 10;
         $query = Board::find()->alias('b');
 
         /**
@@ -82,7 +83,7 @@ class BoardSearch extends Board
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
-                'pageSize' => 10,
+                'pageSize' => $pageSize,
             ],
         ]);
 

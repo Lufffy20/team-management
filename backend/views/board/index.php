@@ -30,6 +30,49 @@ $this->params['breadcrumbs'][] = $this->title;
     'timeout' => 5000,
 ]); ?>
 
+<?php echo Html::beginForm(
+    ['index'],
+    'get',
+    [
+        'data-pjax' => 1,
+        'id' => 'pageSizeForm',
+    ]
+); ?>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        <label class="me-2 fw-semibold">Show</label>
+
+        <?= Html::dropDownList(
+    'per-page',
+    Yii::$app->request->get('per-page', 10),
+    [
+        10  => '10',
+        25  => '25',
+        50  => '50',
+        100 => '100',
+    ],
+    [
+        'class' => 'form-select form-select-sm d-inline-block w-auto',
+        'onchange' => '
+    $.pjax.reload({
+        container: "#task-grid-pjax",
+        url: "' . Url::to(['index']) . '",
+        data: { "per-page": this.value },
+        push: false,
+        replace: false
+    });
+',
+
+    ]
+) ?>
+
+        <span class="ms-2">entries</span>
+    </div>
+</div>
+
+<?php echo Html::endForm(); ?>
+
             <?= GridView::widget([
                 'dataProvider' => $dataProvider,
                 'filterModel' => $searchModel,

@@ -48,9 +48,6 @@ class TeamController extends Controller
             $this->request->queryParams // GET params
         );
 
-        // Set pagination size
-        $dataProvider->pagination->pageSize = 5;
-
         return $this->render('index', [
             'searchModel'  => $searchModel,   // for filters
             'dataProvider'=> $dataProvider,  // for grid/list

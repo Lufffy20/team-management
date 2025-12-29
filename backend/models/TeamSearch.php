@@ -59,6 +59,8 @@ class TeamSearch extends Team
     {
         // Main table alias
         $query = Team::find()->alias('t');
+        // Pagination size
+        $pageSize = $params['per-page'] ?? 10;
 
         // Join creator relation with alias
         $query->joinWith(['creator u']);
@@ -66,6 +68,9 @@ class TeamSearch extends Team
         // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
+            'pagination' => [
+                'pageSize' => $pageSize,
+            ],
         ]);
 
         /**

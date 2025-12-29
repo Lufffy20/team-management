@@ -59,13 +59,20 @@ class TeamMembersSearch extends TeamMembers
     {
         // Base query
         $query = TeamMembers::find();
+        // Pagination size
+        $pageSize = $params['per-page'] ?? 10;
+
 
         // Join related tables for searching
         $query->joinWith(['team', 'user']);
 
         // Data provider
+        // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
+            'pagination' => [
+                'pageSize' => $pageSize,
+            ],
         ]);
 
         /**

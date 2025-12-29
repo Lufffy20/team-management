@@ -61,11 +61,15 @@ class UserSearch extends User
     public function search($params, $formName = null)
     {
         // Base query
+        $pageSize = $params['per-page'] ?? 10;
         $query = User::find();
 
         // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
+            'pagination' => [
+                'pageSize' => $pageSize,
+            ],
         ]);
 
         // Load search parameters

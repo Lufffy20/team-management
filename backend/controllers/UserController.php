@@ -51,9 +51,6 @@ class UserController extends Controller
             $this->request->queryParams // GET params
         );
 
-        // Pagination configuration
-        $dataProvider->pagination->pageSize = 5;
-
         return $this->render('index', [
             'searchModel'  => $searchModel,
             'dataProvider'=> $dataProvider,
