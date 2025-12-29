@@ -389,6 +389,4 @@ public function actionDeleteAvatar()
 
     return $this->redirect(['profile']);
 }
-
-
 }
