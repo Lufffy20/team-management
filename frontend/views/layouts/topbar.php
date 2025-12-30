@@ -1,6 +1,7 @@
 <?php
 use yii\helpers\Url;
 use yii\helpers\Html;
+use common\models\Notification;
 
 $user = Yii::$app->user->identity;
 
@@ -29,13 +30,32 @@ if (!Yii::$app->user->isGuest) {
 
 <div class="topbar d-flex justify-content-end align-items-center p-2">
 
-    <?php if (!Yii::$app->user->isGuest): ?>
-        <div class="me-3">
-            <a href="<?= Url::to(['notifications/index']) ?>" class="text-decoration-none nav-link">
-                <i class="bi bi-bell fs-5"></i>
-            </a>
-        </div>
-    <?php endif; ?>
+<?php
+    $unreadCount = Notification::find()
+    ->where([
+        'user_id' => Yii::$app->user->id,
+        'is_read' => 0
+    ])
+    ->count();
+?>
+
+<?php if (!Yii::$app->user->isGuest): ?>
+    <div class="me-3 position-relative">
+        <a href="<?= \yii\helpers\Url::to(['notifications/index']) ?>"
+           class="nav-link text-decoration-none">
+
+            <i class="bi bi-bell fs-5"></i>
+
+            <?php if ($unreadCount > 0): ?>
+                <span class="position-absolute top-0 start-100 translate-middle
+                             badge rounded-pill bg-danger">
+                    <?= $unreadCount ?>
+                </span>
+            <?php endif; ?>
+
+        </a>
+    </div>
+<?php endif; ?>
 
     <div class="dropdown">
 

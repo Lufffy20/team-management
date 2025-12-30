@@ -5,6 +5,8 @@ use yii\widgets\ActiveForm;
 use yii\helpers\ArrayHelper;
 use common\models\User;
 use common\models\Board; // 🔥 required import for board list
+use common\models\BoardMembers;
+
 
 /** @var yii\web\View $this */
 /** @var common\models\Task $model */
@@ -22,7 +24,12 @@ use common\models\Board; // 🔥 required import for board list
 
         <div class="card-body">
 
-            <?php $form = ActiveForm::begin(); ?>
+            <?php $form = ActiveForm::begin([
+                'fieldConfig' => [
+                    'template' => "{label}\n{input}\n{error}",
+                    'errorOptions' => ['class' => 'text-danger small'],
+                ],
+            ]); ?>
 
             <div class="row">
                 <div class="col-md-6">
@@ -57,16 +64,12 @@ use common\models\Board; // 🔥 required import for board list
             </div>
 
             <!-- 🔥 Board Select (Required for Kanban Appearance) -->
-            <div class="row mt-2">
-    <div class="col-md-12">
-        <?= $form->field($model, 'board_id')->dropDownList(
-            ArrayHelper::map(
-                \common\models\Board::find()->where(['created_by' => Yii::$app->user->id])->all(),
-                'id',
-                'title'
-            ),
-            ['prompt' => 'Select Kanban Board']
-        ) ?>
+            <?= $form->field($model, 'board_id')->dropDownList(
+    ArrayHelper::map($boards, 'id', 'title'),
+    ['prompt' => 'Select Kanban Board']
+) ?>
+
+
     </div>
 </div>
 

@@ -27,11 +27,25 @@ class Board extends ActiveRecord
     public function rules()
     {
         return [
-            // Title is required
+            /* ===============================
+         * TITLE (Only letters & spaces)
+         * =============================== */
+            [['title'], 'trim'],
             [['title'], 'required'],
+            [['title'], 'string', 'min' => 3, 'max' => 100],
+            [
+                ['title'],
+                'match',
+                'pattern' => '/^[A-Za-z ]+$/',
+                'message' => 'Title can contain only letters and spaces.'
+            ],
 
-            // Description can be long text
-            [['description'], 'string'],
+        /* ===============================
+         * DESCRIPTION (Limited length)
+         * =============================== */
+            [['description'], 'trim'],
+            [['description'], 'string', 'max' => 50],
+
 
             // Integer fields
             [['created_by', 'created_at', 'team_id'], 'integer'],

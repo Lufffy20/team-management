@@ -11,7 +11,12 @@ $teams = ArrayHelper::map(Team::find()->all(), 'id', 'name');
 
 <div class="team-members-form">
 
-    <?php $form = ActiveForm::begin(); ?>
+    <?php $form = ActiveForm::begin([
+                'fieldConfig' => [
+                    'template' => "{label}\n{input}\n{error}",
+                    'errorOptions' => ['class' => 'text-danger small'],
+                ],
+            ]); ?>
 
     <!-- Team Dropdown -->
     <?= $form->field($model, 'team_id')->dropDownList($teams, ['prompt' => 'Select Team']) ?>
@@ -20,9 +25,6 @@ $teams = ArrayHelper::map(Team::find()->all(), 'id', 'name');
     <?php if ($model->isNewRecord): ?>
         <?= $form->field($model, 'email')->textInput(['maxlength' => true]) ?>
     <?php endif; ?>
-
-    <!-- Hidden user_id -->
-    <?= $form->field($model, 'user_id')->hiddenInput()->label(false) ?>
 
     <!-- Role Dropdown -->
     <?= $form->field($model, 'role')->dropDownList([

@@ -2,6 +2,7 @@
 
 namespace backend\controllers;
 
+use Yii;
 use common\models\Team;
 use backend\models\TeamSearch;
 use yii\web\Controller;
@@ -11,15 +12,14 @@ use yii\filters\VerbFilter;
 /**
  * TeamController
  *
- * Implements CRUD actions for the Team model.
+ * Handles backend CRUD operations for Team model.
  */
 class TeamController extends Controller
 {
     /**
-     * Defines controller behaviors.
-     * Restricts delete action to POST requests only.
+     * Controller behaviors
      *
-     * @inheritDoc
+     * - Restricts delete action to POST requests only
      */
     public function behaviors()
     {
@@ -29,7 +29,7 @@ class TeamController extends Controller
                 'verbs' => [
                     'class' => VerbFilter::className(),
                     'actions' => [
-                        'delete' => ['POST'], // delete allowed only via POST
+                        'delete' => ['POST'], // security: POST only
                     ],
                 ],
             ]
@@ -37,40 +37,43 @@ class TeamController extends Controller
     }
 
     /**
-     * Lists all Team models with search and pagination.
+     * LIST ALL TEAMS
+     * --------------------------------------------------
+     * Displays teams with search & pagination support.
      *
      * @return string
      */
     public function actionIndex()
     {
-        $searchModel  = new TeamSearch(); // search model
+        $searchModel  = new TeamSearch(); // search/filter model
         $dataProvider = $searchModel->search(
             $this->request->queryParams // GET params
         );
 
         return $this->render('index', [
-            'searchModel'  => $searchModel,   // for filters
-            'dataProvider'=> $dataProvider,  // for grid/list
+            'searchModel'   => $searchModel,   // filter form
+            'dataProvider' => $dataProvider,  // grid/list
         ]);
     }
 
     /**
-     * Displays a single Team model.
+     * VIEW SINGLE TEAM
      *
      * @param int $id Team ID
      * @return string
-     * @throws NotFoundHttpException if team not found
+     * @throws NotFoundHttpException
      */
     public function actionView($id)
     {
         return $this->render('view', [
-            'model' => $this->findModel($id), // load team
+            'model' => $this->findModel($id), // load team safely
         ]);
     }
 
     /**
-     * Creates a new Team model.
-     * On success, redirects to the view page.
+     * CREATE TEAM
+     * --------------------------------------------------
+     * Creates a new team record.
      *
      * @return string|\yii\web\Response
      */
@@ -79,6 +82,7 @@ class TeamController extends Controller
         $model = new Team(); // new team instance
 
         if ($this->request->isPost) {
+
             // Load POST data and save
             if ($model->load($this->request->post()) && $model->save()) {
                 return $this->redirect([
@@ -86,6 +90,7 @@ class TeamController extends Controller
                     'id' => $model->id,
                 ]);
             }
+
         } else {
             // Load default values for new record
             $model->loadDefaultValues();
@@ -97,12 +102,11 @@ class TeamController extends Controller
     }
 
     /**
-     * Updates an existing Team model.
-     * On success, redirects to the view page.
+     * UPDATE TEAM
      *
      * @param int $id Team ID
      * @return string|\yii\web\Response
-     * @throws NotFoundHttpException if team not found
+     * @throws NotFoundHttpException
      */
     public function actionUpdate($id)
     {
@@ -125,30 +129,69 @@ class TeamController extends Controller
     }
 
     /**
-     * Deletes an existing Team model.
-     * Redirects to index after deletion.
+     * MY TEAMS
+     * --------------------------------------------------
+     * Shows teams created by the logged-in admin user.
+     */
+    public function actionMyTeam()
+    {
+        $userId = Yii::$app->user->id;
+
+        $teams = Team::find()
+            ->where(['created_by' => $userId])
+            ->all();
+
+        return $this->render('my-team', [
+            'teams' => $teams,
+        ]);
+    }
+
+    /**
+     * DELETE TEAM
+     * --------------------------------------------------
+     * Deletes team and related team members
+     * inside a database transaction.
      *
      * @param int $id Team ID
      * @return \yii\web\Response
-     * @throws NotFoundHttpException if team not found
+     * @throws NotFoundHttpException
      */
     public function actionDelete($id)
     {
-        $this->findModel($id)->delete(); // delete team
+        $transaction = Yii::$app->db->beginTransaction();
+
+        try {
+            // Delete team members first
+            \common\models\TeamMembers::deleteAll([
+                'team_id' => $id
+            ]);
+
+            // Delete team
+            $this->findModel($id)->delete();
+
+            $transaction->commit();
+
+        } catch (\Exception $e) {
+            $transaction->rollBack();
+            throw $e;
+        }
+
         return $this->redirect(['index']);
     }
 
     /**
-     * Finds the Team model by primary key.
+     * FIND TEAM MODEL
+     * --------------------------------------------------
+     * Fetches Team by primary key.
      *
      * @param int $id Team ID
      * @return Team
-     * @throws NotFoundHttpException if model not found
+     * @throws NotFoundHttpException
      */
     protected function findModel($id)
     {
         if (($model = Team::findOne(['id' => $id])) !== null) {
-            return $model; // return found team
+            return $model;
         }
 
         throw new NotFoundHttpException(

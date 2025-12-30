@@ -2,10 +2,14 @@
 use yii\widgets\ActiveForm;
 use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
-
-
-$form = ActiveForm::begin();
 ?>
+
+<?php $form = ActiveForm::begin([
+                'fieldConfig' => [
+                    'template' => "{label}\n{input}\n{error}",
+                    'errorOptions' => ['class' => 'text-danger small'],
+                ],
+            ]); ?>
 
 <h4 class="fw-bold mb-3">
     <?= $model->isNewRecord ? 'Create Task' : 'Update Task' ?>

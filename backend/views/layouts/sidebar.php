@@ -67,6 +67,14 @@
           </a>
         </li>
 
+        <li class="menu-item <?= Yii::$app->controller->id=='team' 
+            && Yii::$app->controller->action->id=='my-team' ? 'active' : '' ?>">
+            <a href="<?= \yii\helpers\Url::to(['team/my-team']) ?>" class="menu-link">
+                <div>My Team</div>
+            </a>
+        </li>
+
+
         <li class="menu-item <?= Yii::$app->controller->id=='teammembers' ? 'active' : '' ?>">
           <a href="<?= \yii\helpers\Url::to(['teammembers/index']) ?>" class="menu-link">
             <div>Team Members</div>

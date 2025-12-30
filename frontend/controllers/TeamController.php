@@ -406,26 +406,45 @@ class TeamController extends Controller
     /**
      * Delete team completely
      */
-    public function actionDelete($id)
-    {
-        $team = Team::findOne($id);
+   public function actionDelete($id)
+{
+    $team = Team::findOne($id);
 
-        if (!$team) {
-            Yii::$app->session->setFlash('error', 'Team not found');
-            return $this->redirect(['/team/index']);
-        }
-
-        // Delete all members first
-        TeamMembers::deleteAll(['team_id' => $id]);
-
-        // Delete team
-        $team->delete();
-
-        Yii::$app->session->setFlash(
-            'success',
-            'Team deleted successfully'
-        );
-
+    if (!$team) {
+        Yii::$app->session->setFlash('error', 'Team not found');
         return $this->redirect(['/team/index']);
     }
+
+    //  CURRENT USER ROLE CHECK
+    $role = strtolower(
+        TeamMembers::find()
+            ->where([
+                'team_id' => $id,
+                'user_id' => Yii::$app->user->id
+            ])
+            ->select('role')
+            ->scalar()
+    );
+
+    //  NOT ADMIN OR MANAGER → BLOCK
+    if (!in_array($role, ['admin', 'manager'])) {
+        throw new \yii\web\ForbiddenHttpException(
+            'You are not allowed to delete this team.'
+        );
+    }
+
+    //  DELETE ALL TEAM MEMBERS
+    TeamMembers::deleteAll(['team_id' => $id]);
+
+    //  DELETE TEAM
+    $team->delete();
+
+    Yii::$app->session->setFlash(
+        'success',
+        'Team deleted successfully'
+    );
+
+    return $this->redirect(['/team/index']);
+}
+
 }

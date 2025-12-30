@@ -10,7 +10,12 @@ use yii\widgets\ActiveForm;
 
 <div class="contact-message-form">
 
-    <?php $form = ActiveForm::begin(); ?>
+    <?php $form = ActiveForm::begin([
+                'fieldConfig' => [
+                    'template' => "{label}\n{input}\n{error}",
+                    'errorOptions' => ['class' => 'text-danger small'],
+                ],
+            ]); ?>
 
     <?= $form->field($model, 'id')->textInput() ?>
 

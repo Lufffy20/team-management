@@ -67,10 +67,21 @@ class Task extends ActiveRecord
     {
         return [
             // Required fields
-            [['title', 'board_id'], 'required'],
+            [['title'], 'trim'],
+        [['title'], 'required'],
+        [['title'], 'string', 'min' => 3, 'max' => 100],
+        [
+            ['title'],
+            'match',
+            'pattern' => '/^[A-Za-z ]+$/',
+            'message' => 'Name can contain only letters and spaces.'
+        ],
+
+        [['board_id'], 'required'],
 
             // Description text
-            [['description'], 'string'],
+            [['description'], 'trim'],
+            [['description'], 'string', 'max' => 1000],
 
             // Image upload validation
             [['imageFiles'], 'file',

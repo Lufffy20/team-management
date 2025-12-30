@@ -88,130 +88,181 @@ class ManagmentController extends Controller
     }
 
     /**
-     * Shows tasks assigned to the logged-in user.
-     * Optional status filter.
-     */
-    public function actionMytasks($status = null)
-    {
-        $userId = Yii::$app->user->id;
+ * SHOW MY TASKS
+ * --------------------------------------------------
+ * Displays tasks that are assigned to the
+ * currently logged-in user.
+ *
+ * 🔹 Optional: status filter (todo / in_progress / done etc.)
+ */
+public function actionMytasks($status = null)
+{
+    // Logged-in user ID
+    $userId = Yii::$app->user->id;
 
-        $query = Task::find()
-            ->where(['assignee_id' => $userId]); // only assigned tasks
+    // Base query → only tasks assigned to current user
+    $query = Task::find()
+        ->where(['assignee_id' => $userId]); // 🎯 assigned tasks only
 
-        if ($status) {
-            $query->andWhere(['status' => $status]); // filter by status
-        }
-
-        $tasks = $query
-            ->orderBy(['due_date' => SORT_ASC]) // nearest due first
-            ->all();
-
-        return $this->render('mytasks', [
-            'tasks'  => $tasks,
-            'status'=> $status,
-        ]);
+    // Optional status filter
+    if ($status) {
+        $query->andWhere(['status' => $status]); // filter by status
     }
 
-    /**
-     * Creates a new task.
-     * Automatically assigns default team and board if not selected.
-     * Supports normal and AJAX submission.
-     */
-    public function actionCreateTask()
-    {
-        $model = new Task();
-        $model->created_by = Yii::$app->user->id; // creator
+    // Fetch tasks (nearest due date first)
+    $tasks = $query
+        ->orderBy(['due_date' => SORT_ASC])
+        ->all();
 
-        if ($model->load(Yii::$app->request->post())) {
+    return $this->render('mytasks', [
+        'tasks'  => $tasks,
+        'status' => $status,
+    ]);
+}
 
-            /* AUTO BOARD CREATION (if not selected) */
-            if (empty($model->board_id)) {
+/**
+ * CREATE TASK
+ * --------------------------------------------------
+ * Creates a new task for the logged-in user.
+ *
+ * 🔹 If board is NOT selected:
+ *    - Ensure a default team exists
+ *    - Ensure a board exists where user is a member
+ *    - Auto-create board + membership if required
+ *
+ * 🔹 Supports:
+ *    - Normal form submit
+ *    - AJAX submit
+ */
+public function actionCreateTask()
+{
+    $model = new Task();
+    $model->created_by = Yii::$app->user->id; // task creator
 
-                // Ensure at least one team exists
-                $team = \common\models\Team::find()->one();
-                if (!$team) {
-                    $team = new \common\models\Team([
-                        'name'       => 'Default Team',
-                        'created_by'=> Yii::$app->user->id,
-                    ]);
-                    $team->save(false);
-                }
+    if ($model->load(Yii::$app->request->post())) {
 
-                // Ensure a board exists for user
-                $board = Board::find()
-                    ->where(['created_by' => Yii::$app->user->id])
-                    ->one();
+        /* =================================================
+         * AUTO BOARD ASSIGNMENT
+         * -------------------------------------------------
+         * Runs only when board_id is empty
+         * ================================================= */
+        if (empty($model->board_id)) {
 
-                if (!$board) {
-                    $board = new Board([
-                        'title'      => 'Default Board',
-                        'created_by'=> Yii::$app->user->id,
-                        'team_id'   => $team->id,
-                    ]);
-                    $board->save(false);
-                }
+            // 1️⃣ Ensure at least one team exists
+            $team = \common\models\Team::find()
+                ->where(['created_by' => Yii::$app->user->id])
+                ->one();
 
-                $model->board_id = $board->id;
+            if (!$team) {
+                $team = new \common\models\Team([
+                    'name'       => 'Default Team',
+                    'created_by' => Yii::$app->user->id,
+                ]);
+                $team->save(false); // skip validation
             }
 
-            if ($model->save()) {
+            // 2️⃣ Find board where user is already a MEMBER
+            $board = Board::find()
+                ->innerJoin('board_members bm', 'bm.board_id = board.id')
+                ->where(['bm.user_id' => Yii::$app->user->id])
+                ->one();
 
-                // AJAX response
-                if (Yii::$app->request->isAjax) {
-                    Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-                    return ['success' => true];
-                }
+            // 3️⃣ If no board found → create default board
+            if (!$board) {
 
-                // Normal form response
-                Yii::$app->session->setFlash('success', 'Task created successfully.');
-                return $this->redirect(['mytasks']);
+                $board = new Board([
+                    'title'       => 'Default Board',
+                    'created_by'  => Yii::$app->user->id,
+                    'team_id'     => $team->id,
+                ]);
+                $board->save(false);
+
+                /**
+                 * 🔥 IMPORTANT
+                 * Board creator MUST also be a board member,
+                 * otherwise task assignment & visibility breaks
+                 */
+                Yii::$app->db->createCommand()->insert('board_members', [
+                    'board_id' => $board->id,
+                    'user_id'  => Yii::$app->user->id,
+                ])->execute();
             }
 
-            // AJAX validation errors
+            // Assign resolved board to task
+            $model->board_id = $board->id;
+        }
+
+        /* =================================================
+         * SAVE TASK
+         * ================================================= */
+        if ($model->save()) {
+
+            // AJAX response
             if (Yii::$app->request->isAjax) {
                 Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-                return [
-                    'success' => false,
-                    'errors'  => $model->errors,
-                ];
+                return ['success' => true];
             }
+
+            // Normal form response
+            Yii::$app->session->setFlash('success', 'Task created successfully.');
+            return $this->redirect(['mytasks']);
         }
 
-        $boards = Board::find()
-            ->where(['created_by' => Yii::$app->user->id])
-            ->all();
-
-        return $this->render('task_form', [
-            'model'  => $model,
-            'boards'=> $boards,
-        ]);
+        // AJAX validation error response
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+            return [
+                'success' => false,
+                'errors'  => $model->errors,
+            ];
+        }
     }
 
     /**
-     * Updates an existing task.
+     * 🔹 Board dropdown data
+     * Only boards where user is a MEMBER
      */
-    public function actionUpdateTask($id)
-    {
-        $model = Task::findOne($id);
+    $boards = Board::find()
+        ->innerJoin('board_members bm', 'bm.board_id = board.id')
+        ->where(['bm.user_id' => Yii::$app->user->id])
+        ->all();
 
-        if (!$model) {
-            throw new NotFoundHttpException('Task not found');
-        }
+    return $this->render('task_form', [
+        'model'  => $model,
+        'boards' => $boards,
+    ]);
+}
 
-        $boards = Board::find()
-            ->orderBy(['title' => SORT_ASC])
-            ->all();
+/**
+ * UPDATE TASK
+ * --------------------------------------------------
+ * Updates an existing task.
+ */
+public function actionUpdateTask($id)
+{
+    // Fetch task
+    $model = Task::findOne($id);
 
-        if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            Yii::$app->session->setFlash('success', 'Task updated successfully.');
-            return $this->redirect(['managment/mytasks']);
-        }
-
-        return $this->render('task_form', [
-            'model'  => $model,
-            'boards'=> $boards,
-        ]);
+    if (!$model) {
+        throw new NotFoundHttpException('Task not found');
     }
+
+    // Fetch boards for dropdown
+    $boards = Board::find()
+        ->orderBy(['title' => SORT_ASC])
+        ->all();
+
+    // Save updates
+    if ($model->load(Yii::$app->request->post()) && $model->save()) {
+        Yii::$app->session->setFlash('success', 'Task updated successfully.');
+        return $this->redirect(['managment/mytasks']);
+    }
+
+    return $this->render('task_form', [
+        'model'  => $model,
+        'boards' => $boards,
+    ]);
+}
 
     /**
      * Deletes a task.

@@ -8,23 +8,15 @@ use yii\behaviors\TimestampBehavior;
 /**
  * Notification model
  *
- * This model represents the `notification` table.
- * It is used to store user notifications.
+ * Represents the `notification` table.
  */
 class Notification extends ActiveRecord
 {
-    /**
-     * Returns the database table name.
-     */
     public static function tableName()
     {
         return '{{%notification}}';
     }
 
-    /**
-     * Attaches behaviors to the model.
-     * Automatically fills created_at on insert.
-     */
     public function behaviors()
     {
         return [
@@ -36,9 +28,6 @@ class Notification extends ActiveRecord
         ];
     }
 
-    /**
-     * Validation rules for Notification model.
-     */
     public function rules()
     {
         return [
@@ -46,7 +35,10 @@ class Notification extends ActiveRecord
             [['user_id', 'title', 'message'], 'required'],
 
             // Integer fields
-            [['user_id', 'is_read'], 'integer'],
+            [['user_id', 'is_read', 'created_at'], 'integer'],
+
+            // Default values
+            [['is_read'], 'default', 'value' => 0],
 
             // Message can be long text
             [['message'], 'string'],
@@ -56,10 +48,6 @@ class Notification extends ActiveRecord
         ];
     }
 
-    /**
-     * Relation with User model.
-     * One notification belongs to one user.
-     */
     public function getUser()
     {
         return $this->hasOne(User::class, ['id' => 'user_id']);

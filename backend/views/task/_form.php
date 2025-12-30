@@ -26,7 +26,8 @@ use yii\widgets\ActiveForm;
                     <?php $form = ActiveForm::begin([
                         'fieldConfig' => [
                             'labelOptions'  => ['class' => 'form-label fw-semibold'],
-                            'errorOptions'  => ['class' => 'text-danger mt-1'],
+                            'template' => "{label}\n{input}\n{error}",
+                            'errorOptions' => ['class' => 'text-danger small'],
                             'inputOptions'  => ['class' => 'form-control form-control-lg'],
                         ],
                     ]); ?>

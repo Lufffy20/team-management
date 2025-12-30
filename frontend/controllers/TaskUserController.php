@@ -20,22 +20,25 @@ class TaskUserController extends Controller
 {
     /**
      * Access control + HTTP verb rules
+     *
+     * - Only logged-in users can access
+     * - Delete allowed via POST and GET
      */
     public function behaviors()
     {
         return [
-            // Only logged-in users allowed
+            // 🔐 Access control
             'access' => [
                 'class' => AccessControl::class,
                 'rules' => [
                     [
                         'allow' => true,
-                        'roles' => ['@'],
+                        'roles' => ['@'], // logged-in users only
                     ],
                 ],
             ],
 
-            // Delete allowed via POST / GET
+            // 🔁 HTTP verb restrictions
             'verbs' => [
                 'class' => VerbFilter::class,
                 'actions' => [
@@ -46,47 +49,51 @@ class TaskUserController extends Controller
     }
 
     /**
-     * Lists all Task models visible to logged-in user.
+     * LIST TASKS
+     * --------------------------------------------------
+     * Shows all tasks visible to the logged-in user.
      *
-     * Logic:
-     * - User must be logged in
-     * - Fetch teams where user is member
-     * - Fetch boards of those teams
-     * - Show only tasks belonging to those boards
+     * Flow:
+     * 1) Ensure user is logged in
+     * 2) Get teams where user is a member
+     * 3) Get boards of those teams
+     * 4) Show tasks only from allowed boards
      */
     public function actionIndex()
     {
-        // Safety check (extra, even though AccessControl exists)
+        // Extra safety check (even though AccessControl exists)
         if (Yii::$app->user->isGuest) {
             Yii::$app->response->statusCode = 302;
             return Yii::$app->response->redirect(['/site/login']);
         }
 
-        // Search model for filters
+        // Search model (filters + sorting)
         $searchModel  = new TaskSearchFrontend();
         $dataProvider = $searchModel->search($this->request->queryParams);
 
         $userId = Yii::$app->user->id;
 
         /* ===============================
-           USER TEAM IDS
-           =============================== */
+         * USER TEAM IDS
+         * =============================== */
         $teamIds = \common\models\TeamMembers::find()
             ->select('team_id')
             ->where(['user_id' => $userId])
             ->column();
 
         /* ===============================
-           TEAM BOARD IDS
-           =============================== */
+         * TEAM BOARD IDS
+         * =============================== */
         $boardIds = \common\models\Board::find()
             ->select('id')
             ->where(['team_id' => $teamIds])
             ->column();
 
-        // Restrict tasks to allowed boards only
+        /* ===============================
+         * TASK ACCESS RESTRICTION
+         * =============================== */
         $dataProvider->query->andWhere([
-            'board_id' => $boardIds
+            'board_id' => $boardIds, // only allowed boards
         ]);
 
         return $this->render('index', compact(
@@ -96,7 +103,7 @@ class TaskUserController extends Controller
     }
 
     /**
-     * Displays a single Task model.
+     * VIEW SINGLE TASK
      *
      * @param int $id Task ID
      */
@@ -108,35 +115,39 @@ class TaskUserController extends Controller
     }
 
     /**
-     * Creates a new Task model.
-     * On success redirects to view page.
+     * CREATE TASK
+     * --------------------------------------------------
+     * Creates a new task for the logged-in user.
+     * On success → redirects to task view page.
      */
     public function actionCreate()
     {
         $model = new Task();
+        $model->created_by = Yii::$app->user->id; // task creator
 
-        if ($this->request->isPost) {
+        // Boards where user is a MEMBER
+        $boards = \common\models\Board::find()
+            ->innerJoin('board_members bm', 'bm.board_id = board.id')
+            ->where(['bm.user_id' => Yii::$app->user->id])
+            ->all();
 
-            // Load + save
-            if ($model->load($this->request->post()) && $model->save()) {
+        if (Yii::$app->request->isPost) {
+            if ($model->load(Yii::$app->request->post()) && $model->save()) {
                 return $this->redirect([
                     'view',
                     'id' => $model->id
                 ]);
             }
-
-        } else {
-            // Load default DB values
-            $model->loadDefaultValues();
         }
 
         return $this->render('create', [
-            'model' => $model,
+            'model'  => $model,
+            'boards' => $boards, // passed to dropdown
         ]);
     }
 
     /**
-     * Updates an existing Task model.
+     * UPDATE TASK
      *
      * @param int $id Task ID
      */
@@ -150,11 +161,11 @@ class TaskUserController extends Controller
         if (
             $this->request->isPost &&
             $model->load($this->request->post()) &&
-            $model->save(false)          // validation intentionally skipped
+            $model->save(false) // validation intentionally skipped
         ) {
             return $this->redirect([
                 'view',
-                'id' => $model->id
+                'id' => $model->id,
             ]);
         }
 
@@ -164,7 +175,7 @@ class TaskUserController extends Controller
     }
 
     /**
-     * Deletes an existing Task model.
+     * DELETE TASK
      *
      * @param int $id Task ID
      */
@@ -176,12 +187,14 @@ class TaskUserController extends Controller
     }
 
     /**
-     * Finds the Task model with ACCESS CHECK.
+     * FIND TASK WITH ACCESS CHECK
+     * --------------------------------------------------
+     * Ensures user can access the task.
      *
      * Logic:
-     * - Fetch teams of logged-in user
-     * - Fetch boards of those teams
-     * - Allow task access only if it belongs to those boards
+     * 1) Fetch teams of logged-in user
+     * 2) Fetch boards of those teams
+     * 3) Allow task only if it belongs to those boards
      *
      * @param int $id Task ID
      * @return Task
@@ -192,31 +205,31 @@ class TaskUserController extends Controller
         $userId = Yii::$app->user->id;
 
         /* ===============================
-           USER TEAM IDS
-           =============================== */
+         * USER TEAM IDS
+         * =============================== */
         $teamIds = \common\models\TeamMembers::find()
             ->select('team_id')
             ->where(['user_id' => $userId])
             ->column();
 
         /* ===============================
-           TEAM BOARD IDS
-           =============================== */
+         * TEAM BOARD IDS
+         * =============================== */
         $boardIds = \common\models\Board::find()
             ->select('id')
             ->where(['team_id' => $teamIds])
             ->column();
 
         /* ===============================
-           TASK FETCH WITH SECURITY
-           =============================== */
+         * TASK FETCH WITH SECURITY
+         * =============================== */
         $model = Task::find()
             ->where(['id' => $id])
             ->andWhere(['board_id' => $boardIds])
             ->one();
 
         if ($model === null) {
-            throw new NotFoundHttpException();
+            throw new NotFoundHttpException('Task not found or access denied.');
         }
 
         return $model;

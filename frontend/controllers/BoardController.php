@@ -16,14 +16,20 @@ use common\models\TaskAttachment;
 /**
  * BoardController
  *
- * Handles board listing, creation, viewing,
- * updating, deletion, and member management.
+ * 👉 Responsible for:
+ * - Showing boards
+ * - Creating boards
+ * - Viewing board details
+ * - Updating board info
+ * - Deleting board and related data
+ * - Managing board members
  */
 class BoardController extends Controller
 {
     /**
-     * Access control.
-     * Only logged-in users can access board actions.
+     * Access Control
+     * ----------------
+     * Only logged-in users can access any board action
      */
     public function behaviors()
     {
@@ -33,7 +39,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'roles' => ['@'], // authenticated users only
+                        'roles' => ['@'], // 🔐 authenticated users only
                     ],
                 ],
             ],
@@ -41,45 +47,51 @@ class BoardController extends Controller
     }
 
     /**
-     * Lists all boards visible to the logged-in user.
+     * BOARD LISTING
+     * ----------------
+     * Shows all boards available to logged-in user
      *
      * Logic:
-     * 1) Get teams where user is a member
-     * 2) Fetch boards created by the user
-     * 3) Fetch boards belonging to those teams
+     * 1️⃣ Fetch team IDs where user is a member
+     * 2️⃣ Fetch boards created by user
+     * 3️⃣ Fetch boards belonging to user's teams
      */
     public function actionIndex()
     {
-        $userId = Yii::$app->user->id; // current user ID
+        $userId = Yii::$app->user->id; // current logged-in user ID
 
-        /* ================= USER TEAMS ================= */
+        // 🔹 Fetch team IDs where user is a member
         $teamIds = \common\models\TeamMembers::find()
             ->select('team_id')
             ->where(['user_id' => $userId])
             ->column();
 
-        /* ================= USER BOARDS ================= */
+        // 🔹 Fetch boards (own + team boards)
         $boards = Board::find()
             ->where(['created_by' => $userId]) // boards created by user
-            ->orWhere(['team_id' => $teamIds]) // boards from user's teams
+            ->orWhere(['team_id' => $teamIds]) // boards from teams
             ->all();
 
         return $this->render('index', compact('boards'));
     }
 
     /**
-     * Creates a new board.
-     * Also creates default Kanban columns for the board.
+     * CREATE BOARD
+     * ----------------
+     * Creates a new board and auto-generates default Kanban columns
      */
     public function actionCreate()
     {
         $model = new Board();
-        $model->created_by = Yii::$app->user->id; // creator
-        $model->created_at = time();              // timestamp
+        $model->created_by = Yii::$app->user->id; // board owner
+        $model->created_at = time();              // creation timestamp
 
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
 
-            /* ================= DEFAULT KANBAN COLUMNS ================= */
+            /**
+             * 🔹 Default Kanban Columns
+             * Format: [status_key, label, position]
+             */
             $defaultColumns = [
                 ['todo',        'To-Do',        0],
                 ['in_progress', 'In Progress',  1],
@@ -87,14 +99,15 @@ class BoardController extends Controller
                 ['archived',    'Archived',     3],
             ];
 
+            // Create each default column
             foreach ($defaultColumns as $col) {
                 $column = new KanbanColumn();
-                $column->board_id = $model->id;              // board reference
-                $column->user_id  = Yii::$app->user->id;     // owner
-                $column->status   = $col[0];                 // status key
-                $column->label    = $col[1];                 // display label
-                $column->position = $col[2];                 // column order
-                $column->save(false);
+                $column->board_id = $model->id;          // link to board
+                $column->user_id  = Yii::$app->user->id; // owner
+                $column->status   = $col[0];             // column key
+                $column->label    = $col[1];             // UI label
+                $column->position = $col[2];             // order
+                $column->save(false);                     // skip validation
             }
 
             return $this->redirect(['index']);
@@ -104,14 +117,14 @@ class BoardController extends Controller
     }
 
     /**
-     * Deletes a board and all related data.
-     *
-     * Deletes:
+     * DELETE BOARD
+     * ----------------
+     * Deletes board along with all dependent data:
      * - Tasks
      * - Subtasks
-     * - Task comments
-     * - Task attachments
-     * - Kanban columns
+     * - Comments
+     * - Attachments
+     * - Kanban Columns
      */
     public function actionDelete($id)
     {
@@ -120,7 +133,7 @@ class BoardController extends Controller
             throw new NotFoundHttpException('Board not found');
         }
 
-        /* ================= BOARD TASKS ================= */
+        // 🔹 Fetch all tasks of the board
         $tasks = Task::find()
             ->where(['board_id' => $id])
             ->all();
@@ -130,39 +143,70 @@ class BoardController extends Controller
             // Delete subtasks
             Subtask::deleteAll(['task_id' => $task->id]);
 
-            // Delete comments
+            // Delete task comments
             TaskComment::deleteAll(['task_id' => $task->id]);
 
-            // Delete attachments (database records)
+            // Delete task attachments (DB records only)
             TaskAttachment::deleteAll(['task_id' => $task->id]);
 
-            // Delete task itself
+            // Delete task
             $task->delete();
         }
 
-        /* ================= BOARD COLUMNS ================= */
+        // 🔹 Delete Kanban columns
         KanbanColumn::deleteAll(['board_id' => $id]);
 
-        /* ================= BOARD ================= */
+        // 🔹 Finally delete board
         $board->delete();
 
         return $this->redirect(['index']);
     }
 
     /**
-     * Displays a single board with its members.
-     *
-     * @param int $id Board ID
+     * VIEW BOARD
+     * ----------------
+     * Displays board details along with members
      */
     public function actionView($id)
     {
         $board = Board::findOne($id);
 
-        // Fetch board members with user data
+        if (!$board) {
+            throw new NotFoundHttpException('Board not found');
+        }
+
+        // 🔹 Fetch board members with user relation
         $members = \common\models\BoardMembers::find()
             ->where(['board_id' => $id])
             ->joinWith('user')
             ->all();
+
+        /**
+         * 🔹 Ensure board creator (manager) is always shown
+         * even if not explicitly added in board_members table
+         */
+        $managerExists = false;
+        foreach ($members as $m) {
+            if ($m->user_id == $board->created_by) {
+                $managerExists = true;
+                break;
+            }
+        }
+
+        // If manager missing → add manually on top
+        if (!$managerExists) {
+            $manager = new \common\models\BoardMembers();
+            $manager->user_id  = $board->created_by;
+            $manager->board_id = $board->id;
+
+            // Attach user relation manually
+            $manager->populateRelation(
+                'user',
+                \common\models\User::findOne($board->created_by)
+            );
+
+            array_unshift($members, $manager); // manager at top
+        }
 
         return $this->render('view', [
             'board'   => $board,
@@ -171,8 +215,10 @@ class BoardController extends Controller
     }
 
     /**
-     * Updates board title and description.
-     * Used for inline or form-based updates.
+     * UPDATE BOARD
+     * ----------------
+     * Updates board title & description
+     * Used for inline edit or form submit
      */
     public function actionUpdate()
     {
@@ -190,13 +236,28 @@ class BoardController extends Controller
     }
 
     /**
-     * Removes a member from a board.
+     * REMOVE BOARD MEMBER
+     * ----------------
+     * Only board owner (creator) can remove members
      *
-     * @param int $board_id Board ID
-     * @param int $user     User ID
+     * @param int $board_id
+     * @param int $user
      */
     public function actionRemoveMember($board_id, $user)
     {
+        $board = Board::findOne($board_id);
+
+        if (!$board) {
+            throw new NotFoundHttpException('Board not found');
+        }
+
+        // 🔐 Only board owner allowed
+        if ($board->created_by != Yii::$app->user->id) {
+            throw new \yii\web\ForbiddenHttpException(
+                'You are not allowed to remove members from this board.'
+            );
+        }
+
         $member = \common\models\BoardMembers::findOne([
             'board_id' => $board_id,
             'user_id'  => $user,
@@ -204,20 +265,11 @@ class BoardController extends Controller
 
         if ($member) {
             $member->delete();
-            Yii::$app->session->setFlash(
-                'success',
-                'Member removed successfully'
-            );
+            Yii::$app->session->setFlash('success', 'Member removed successfully');
         } else {
-            Yii::$app->session->setFlash(
-                'danger',
-                'Member not found'
-            );
+            Yii::$app->session->setFlash('danger', 'Member not found');
         }
 
-        return $this->redirect([
-            '/board/view',
-            'id' => $board_id,
-        ]);
+        return $this->redirect(['/board/view', 'id' => $board_id]);
     }
 }

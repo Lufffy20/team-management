@@ -20,6 +20,7 @@ use common\models\TeamMembers;
 use yii\web\Response;
 use yii\base\InvalidArgumentException;
 use yii\web\BadRequestHttpException;
+use common\models\Notification;
 
 /**
  * SiteController
@@ -439,28 +440,68 @@ class SiteController extends Controller
     }
 
     /**
-     * Signup action.
-     */
-    public function actionSignup()
-    {
-        $this->layout = 'blank';
-        $model = new SignupForm();
+ * SIGNUP ACTION
+ * --------------------------------------------------
+ * Handles user registration.
+ *
+ * Flow:
+ * 1) Load signup form data
+ * 2) Create user via SignupForm::signup()
+ * 3) Create welcome notification for new user
+ * 4) Set success flash message (required for tests)
+ * 5) Refresh the same page
+ */
+public function actionSignup()
+{
+    // Use blank layout for signup page
+    $this->layout = 'blank';
 
-        if ($model->load(Yii::$app->request->post()) && $model->signup()) {
+    // Signup form model
+    $model = new SignupForm();
 
-            // Required exact message for tests
+    // Load POST data
+    if ($model->load(Yii::$app->request->post())) {
+
+        /**
+         * signup() returns User model on success
+         * or false on failure
+         */
+        $user = $model->signup();
+
+        if ($user) {
+
+            /* =========================================
+             * WELCOME NOTIFICATION
+             * -----------------------------------------
+             * Automatically notify user after signup
+             * ========================================= */
+            $notification = new Notification();
+            $notification->user_id = $user->id; // newly created user
+            $notification->title   = 'Welcome 🎉';
+            $notification->message = 'Welcome to Task Manager! We’re glad to have you onboard.';
+            $notification->save(false); // skip validation (safe here)
+
+            /**
+             * IMPORTANT
+             * Exact success message is required
+             * for automated test cases
+             */
             Yii::$app->session->setFlash(
                 'success',
                 'Thank you for registration.'
             );
 
+            // Refresh same page (tests expect refresh)
             return $this->refresh();
         }
-
-        return $this->render('signup', [
-            'model' => $model,
-        ]);
     }
+
+    // Initial load or validation failure
+    return $this->render('signup', [
+        'model' => $model,
+    ]);
+}
+
 
     /**
      * Request password reset.
