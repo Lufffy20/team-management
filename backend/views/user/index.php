@@ -126,58 +126,26 @@ $this->params['breadcrumbs'][] = $this->title;
 
               
               [
-                'attribute' => 'username',
-                'format' => 'raw',
-                'value' => function ($model) {
-                    return '<i class="bx bx-user me-2"></i><strong>' . 
-                            Html::encode($model->username) . '</strong>';
-                },
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
-
-
-              [
-    'label' => 'Teams',
+    'attribute' => 'username',
     'format' => 'raw',
     'value' => function ($model) {
 
-        if (empty($model->teams)) {
-            return '<span class="badge bg-secondary">No Team</span>';
-        }
+        $avatarUrl = Yii::$app->avatar->get($model);
 
-        $badges = [];
-
-        foreach ($model->teams as $team) {
-            $badges[] = '<span class="badge bg-info me-1">'
-                . Html::encode($team->name)
-                . '</span>';
-        }
-
-        return implode(' ', $badges);
+        return '
+        <div class="d-flex align-items-center gap-2">
+            <img
+                src="' . $avatarUrl . '"
+                class="rounded-circle shadow-sm"
+                width="40"
+                height="40"
+                style="object-fit:cover"
+            >
+            <strong>' . Html::encode($model->username) . '</strong>
+        </div>';
     },
-    'headerOptions' => ['class' => 'p-3'],
-    'contentOptions' => ['class' => 'p-3'],
 ],
 
-
-              [
-                'attribute' => 'avatar',
-                'format' => 'html',
-                'value' => function ($model) {
-                  if ($model->avatar) {
-                      return Html::img(
-                          Yii::$app->request->baseUrl . "/uploads/avatars/" . $model->avatar,
-                          ['class' => 'rounded-circle', 'style' => 'width:40px; height:40px; object-fit:cover;']
-                      );
-                  }
-                  return '<span class="badge bg-secondary">No Avatar</span>';
-                },
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
-
-              
 
 
               [
@@ -223,5 +191,4 @@ $this->params['breadcrumbs'][] = $this->title;
       </div>
     </div>
   </div>
-
 </div>

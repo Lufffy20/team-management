@@ -56,15 +56,17 @@ AppAsset::register($this);
 <li class="nav-item navbar-dropdown dropdown-user dropdown">
   <a class="nav-link dropdown-toggle hide-arrow" data-bs-toggle="dropdown" href="#">
     <div class="avatar avatar-online">
-      <img 
-        src="<?= $user->avatar 
-              ? Yii::$app->request->baseUrl . '/uploads/avatars/' . $user->avatar
-              : 'https://ui-avatars.com/api/?name=' . urlencode($user->first_name) ?>"
+    <img
+        src="<?= Yii::$app->avatar->get($user) ?>"
         alt="User Avatar"
-        class="rounded-circle"
-        style="width:40px; height:40px; object-fit:cover; object-position:center;"
-      >
-    </div>
+        class="rounded-circle shadow-sm"
+        width="40"
+        height="40"
+        style="object-fit: cover; object-position: center;"
+    >
+</div>
+
+
   </a>
 
   <!-- Dropdown Menu -->

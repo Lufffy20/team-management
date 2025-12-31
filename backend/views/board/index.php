@@ -206,6 +206,21 @@ $this->params['breadcrumbs'][] = $this->title;
 
                         'buttons' => [
                             'actions' => function ($url, $model) {
+
+                                $deleteForm = Html::beginForm(
+                                    ['delete', 'id' => $model->id],
+                                    'post',
+                                    ['style' => 'display:inline']
+                                );
+                                $deleteForm .= Html::submitButton(
+                                    '<i class="bx bx-trash me-1"></i> Delete',
+                                    [
+                                        'class' => 'dropdown-item text-danger',
+                                        'data-confirm' => 'Are you sure you want to delete this board?',
+                                    ]
+                                );
+                                $deleteForm .= Html::endForm();
+
                                 return '
                                     <div class="dropdown">
                                         <button class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
@@ -218,17 +233,14 @@ $this->params['breadcrumbs'][] = $this->title;
                                             <a class="dropdown-item" href="' . Url::to(['update', 'id' => $model->id]) . '">
                                                 <i class="bx bx-edit-alt me-1"></i> Edit
                                             </a>
-                                            <a class="dropdown-item text-danger" href="' . Url::to(['delete', 'id' => $model->id]) . '" 
-                                                data-confirm="Are you sure you want to delete this board?" 
-                                                data-method="post">
-                                                <i class="bx bx-trash me-1"></i> Delete
-                                            </a>
+                                            ' . $deleteForm . '
                                         </div>
                                     </div>
                                 ';
                             }
                         ]
                     ],
+
                 ],
             ]); ?>
             <?php Pjax::end(); ?>

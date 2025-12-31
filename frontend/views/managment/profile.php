@@ -28,23 +28,23 @@ $this->title = "My Profile";
 
         <div class="card-body text-center">
 
-          <!-- Current Avatar -->
-          <div class="d-flex flex-column align-items-center mb-3">
+        <!-- Current Avatar -->
+<div class="d-flex flex-column align-items-center mb-3">
 
-            <?php if ($model->avatar): ?>
-              <img src="<?= Yii::$app->request->baseUrl ?>/uploads/avatars/<?= $model->avatar ?>"
-                   alt="avatar"
-                   class="rounded-circle shadow-sm"
-                   width="140" height="140"
-                   style="object-fit: cover;">
-            <?php else: ?>
-              <img src="https://ui-avatars.com/api/?size=140&name=<?= $model->first_name . '+' . $model->last_name ?>"
-                   class="rounded-circle shadow-sm"
-                   width="140" height="140">
-            <?php endif; ?>
+    <img
+        src="<?= Yii::$app->avatar->get($model) ?>"
+        alt="avatar"
+        class="rounded-circle shadow-sm"
+        width="140"
+        height="140"
+        style="object-fit: cover;"
+    >
 
-            <small class="text-muted mt-2">Allowed: JPG, PNG, WEBP (Max 2MB)</small>
-          </div>
+    <small class="text-muted mt-2">
+        Allowed: JPG, PNG, WEBP (Max 2MB)
+    </small>
+
+</div>
 
           <!-- Upload Form -->
           <?php $form = ActiveForm::begin([

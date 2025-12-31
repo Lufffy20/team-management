@@ -39,7 +39,6 @@ $this->registerJs(
 </div>
 
 <!-- ================= CHARTS ================= -->
-<!-- ================= CHARTS ================= -->
 <div class="row g-4 mb-4">
 
     <!-- STATUS PIE -->
@@ -69,14 +68,14 @@ $this->registerJs(
                     </small>
                 </div>
 
-                <select id="teamSelect" class="form-select form-select-sm w-auto">
-                    <option value="">All Teams</option>
-                    <?php foreach ($teams as $team): ?>
-                        <option value="<?= $team->id ?>">
-                            <?= Html::encode($team->name) ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+                
+    <select id="teamSelect" class="form-select form-select-sm w-auto">
+        <?php foreach ($teams as $team): ?>
+            <option value="<?= $team->id ?>">
+                <?= Html::encode($team->name) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
             </div>
 
             <div class="chart-body">

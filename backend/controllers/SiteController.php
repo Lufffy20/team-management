@@ -25,52 +25,46 @@ class SiteController extends Controller
     /**
      * Defines access control and HTTP verb rules.
      */
-    public function behaviors()
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'rules' => [
+public function behaviors()
+{
+    return [
+        'access' => [
+            'class' => AccessControl::class,
+            'rules' => [
 
-                    // Guest allowed actions
-                    [
-                        'actions' => [
-                            'login',
-                            'error',
-                            'request-password-reset',
-                            'reset-password',
-                        ],
-                        'allow' => true,
-                        'roles' => ['?'],
-                    ],
+                // Guest allowed actions
+                [
+                    'actions' => ['login', 'error'],
+                    'allow'   => true,
+                ],
 
-                    // Logged-in admin only
-                    [
-                        'allow' => true,
-                        'roles' => ['@'],
-                        'matchCallback' => function () {
-                            return Yii::$app->user->identity->role == 1;
-                        },
-                    ],
+                // Logged-in admin only (role = 1)
+                [
+                    'allow' => true,
+                    'roles' => ['@'],
+                    'matchCallback' => function ($rule, $action) {
+                        return Yii::$app->user->identity->role == 1;
+                    },
+                ],
 
-                    // Logout allowed for any logged-in user
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
+                // Logout allowed for any logged-in user
+                [
+                    'actions' => ['logout'],
+                    'allow'   => true,
+                    'roles'   => ['@'],
                 ],
             ],
+        ],
 
-            // HTTP verb restrictions
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'logout' => ['post'],
-                ],
+        // HTTP verb restrictions
+        'verbs' => [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'logout' => ['post'],
             ],
-        ];
-    }
+        ],
+    ];
+}
 
     /**
      * Declares external actions.

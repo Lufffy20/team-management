@@ -11,6 +11,7 @@ $this->params['breadcrumbs'][] = ['label' => 'Users', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 
 \yii\web\YiiAsset::register($this);
+
 ?>
 
 <div class="container mt-4">
@@ -45,57 +46,85 @@ $this->params['breadcrumbs'][] = $this->title;
                     <div class="row">
 
                         <!-- AVATAR -->
-                        <div class="col-md-3 text-center mb-4">
-                            <?php if ($model->avatar): ?>
-                                <img src="/uploads/avatars/<?= $model->avatar ?>" 
-                                    class="rounded"
-                                    style="width: 130px; height: 130px; object-fit: cover; border:1px solid #ccc;">
-                            <?php else: ?>
-                                <div class="bg-light border rounded d-flex justify-content-center align-items-center"
-                                     style="width:130px;height:130px;">
-                                     <i class="bx bx-user fs-1"></i>
-                                </div>
-                            <?php endif; ?>
+<div class="col-md-3 text-center mb-4">
 
-                            <p class="text-muted mt-2 fw-semibold">User Avatar</p>
-                        </div>
+    <img
+        src="<?= Yii::$app->avatar->get($model) ?>"
+        alt="User Avatar"
+        class="rounded shadow-sm"
+        width="130"
+        height="130"
+        style="object-fit: cover; border:1px solid #ccc;"
+    >
+
+    <p class="text-muted mt-2 fw-semibold">User Avatar</p>
+
+</div>
+
+
+
 
                         <!-- DETAILS -->
                         <div class="col-md-9">
 
                             <?= DetailView::widget([
-                                'model' => $model,
-                                'options' => ['class' => 'table table-bordered table-striped'],
-                                'attributes' => [
-                                    'id',
-                                    'first_name',
-                                    'last_name',
-                                    'username',
-                                    'email:email',
-                                    [
-                                        'attribute' => 'role',
-                                        'value' => $model->role == 1 ? 'Admin' : 'User',
-                                    ],
-                                    [
-                                        'attribute' => 'status',
-                                        'value' => function ($m) {
-                                            return match ($m->status) {
-                                                10 => 'Active',
-                                                9  => 'Inactive',
-                                                default => 'Deleted',
-                                            };
-                                        }
-                                    ],
-                                    [
-                                        'attribute' => 'created_at',
-                                        'value' => date("d M Y, h:i A", $model->created_at),
-                                    ],
-                                    [
-                                        'attribute' => 'updated_at',
-                                        'value' => date("d M Y, h:i A", $model->updated_at),
-                                    ],
-                                ],
-                            ]) ?>
+    'model' => $model,
+    'options' => ['class' => 'table table-bordered table-striped'],
+    'attributes' => [
+        'id',
+        'first_name',
+        'last_name',
+        'username',
+        'email:email',
+
+        [
+            'attribute' => 'role',
+            'value' => $model->role == 1 ? 'Admin' : 'User',
+        ],
+
+        [
+            'label' => 'Teams',
+            'format' => 'raw',
+            'value' => function ($model) {
+
+                if (empty($model->teams)) {
+                    return '<span class="badge bg-secondary">No Team</span>';
+                }
+
+                $badges = [];
+
+                foreach ($model->teams as $team) {
+                    $badges[] = '<span class="badge bg-info me-1">'
+                        . Html::encode($team->name)
+                        . '</span>';
+                }
+
+                return implode(' ', $badges);
+            },
+        ],
+
+        [
+            'attribute' => 'status',
+            'value' => function ($m) {
+                return match ($m->status) {
+                    10 => 'Active',
+                    9  => 'Inactive',
+                    default => 'Deleted',
+                };
+            }
+        ],
+
+        [
+            'attribute' => 'created_at',
+            'value' => date("d M Y, h:i A", $model->created_at),
+        ],
+        [
+            'attribute' => 'updated_at',
+            'value' => date("d M Y, h:i A", $model->updated_at),
+        ],
+    ],
+]) ?>
+
 
                         </div>
 

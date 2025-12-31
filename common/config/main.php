@@ -9,5 +9,8 @@ return [
         'cache' => [
             'class' => \yii\caching\FileCache::class,
         ],
+        'avatar' => [
+        'class' => common\components\AvatarComponent::class,
+    ],
     ],
 ];

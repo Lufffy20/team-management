@@ -21,12 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function loadDashboard(teamId = '') {
+    function loadDashboard(teamId) {
 
-        let url = DASHBOARD_STATS_URL;
-        if (teamId) {
-            url += '?team_id=' + encodeURIComponent(teamId);
+        if (!teamId) {
+            console.warn('⚠️ No team selected');
+            return;
         }
+
+        let url = DASHBOARD_STATS_URL + '?team_id=' + encodeURIComponent(teamId);
 
         fetch(url)
             .then(res => {
@@ -71,16 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                         options: {
                             responsive: true,
-                            maintainAspectRatio: false, 
+                            maintainAspectRatio: false,
                             plugins: {
                                 legend: { display: false }
                             },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    ticks: {
-                                        precision: 0
-                                    }
+                                    ticks: { precision: 0 }
                                 }
                             }
                         }
@@ -127,11 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    /* 🔹 Initial load */
-    loadDashboard();
-
-    /* 🔹 Team filter */
+    /* 🔹 Initial load (FIRST TEAM) */
     if (teamSelect) {
+        loadDashboard(teamSelect.value);
+
+        /* 🔹 Team change */
         teamSelect.addEventListener('change', e => {
             loadDashboard(e.target.value);
         });
