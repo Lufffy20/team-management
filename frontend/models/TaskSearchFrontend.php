@@ -69,10 +69,15 @@ class TaskSearchFrontend extends Task
     {
         // Base query
         $query = Task::find();
+        // Pagination size
+        $pageSize = $params['per-page'] ?? 10;
 
         // Data provider
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
+            'pagination' => [
+                'pageSize' => $pageSize,
+            ],
         ]);
 
         // Load parameters into model

@@ -53,7 +53,7 @@ class UserController extends Controller
 
         return $this->render('index', [
             'searchModel'  => $searchModel,
-            'dataProvider'=> $dataProvider,
+            'dataProvider' => $dataProvider,
         ]);
     }
 
@@ -92,7 +92,7 @@ class UserController extends Controller
                 // Save avatar if uploaded
                 if ($model->avatarFile) {
                     $fileName   = uniqid() . '.' . $model->avatarFile->extension;
-                    $uploadDir  = Yii::getAlias('@webroot/uploads/avatars/');
+                    $uploadDir  = Yii::getAlias('@common/uploads/avatars/');
                     $uploadPath = $uploadDir . $fileName;
 
                     if (!is_dir($uploadDir)) {
@@ -158,7 +158,6 @@ class UserController extends Controller
                     if ($oldAvatar && file_exists($uploadDir . $oldAvatar)) {
                         unlink($uploadDir . $oldAvatar);
                     }
-
                 } else {
                     // Keep existing avatar
                     $model->avatar = $oldAvatar;
@@ -300,23 +299,31 @@ class UserController extends Controller
                 return $this->refresh();
             }
 
-            // 2) Avatar upload
+            // 2) Avatar upload (ROOT uploads/avatars)
             if ($model->avatarFile) {
 
                 $uploadDir = Yii::getAlias('@webroot/uploads/avatars/');
 
+                // Create folder if not exists
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
 
+                // Delete old avatar
                 if ($oldAvatar && file_exists($uploadDir . $oldAvatar)) {
                     unlink($uploadDir . $oldAvatar);
                 }
 
+                // Generate unique filename
                 $newFile = time() . '_' . uniqid() . '.' . $model->avatarFile->extension;
+
+                // Save file
                 $model->avatarFile->saveAs($uploadDir . $newFile);
+
+                // Save filename in DB
                 $model->avatar = $newFile;
             }
+
 
             // 3) Save profile changes
             if ($model->save(false)) {

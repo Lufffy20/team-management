@@ -1,0 +1,6 @@
+# Allow access to uploads directory
+RewriteCond %{REQUEST_URI} ^/uploads/ [NC]
+RewriteRule ^ - [L]
+
+# Your existing rewrite rules below
+RewriteEngine on

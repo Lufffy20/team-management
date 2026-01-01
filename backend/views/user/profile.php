@@ -1,4 +1,5 @@
 <?php
+
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\bootstrap5\ActiveForm;
@@ -32,13 +33,12 @@ $this->title = "My Profile";
           <div class="d-flex flex-column align-items-center mb-3">
 
             <img
-    src="<?= Yii::$app->avatar->get($model) ?>"
-    alt="avatar"
-    class="rounded-circle shadow-sm"
-    width="140"
-    height="140"
-    style="object-fit: cover;"
->
+              src="<?= Yii::$app->avatar->get($model) ?>"
+              alt="avatar"
+              class="rounded-circle shadow-sm"
+              width="140"
+              height="140"
+              style="object-fit: cover;">
 
 
 
@@ -50,26 +50,26 @@ $this->title = "My Profile";
             'options' => ['enctype' => 'multipart/form-data', 'class' => 'mt-3']
           ]); ?>
 
-            <?= $form->field($model, 'avatarFile')->fileInput([
-              'class' => 'form-control',
-            ]) ?>
+          <?= $form->field($model, 'avatarFile')->fileInput([
+            'class' => 'form-control',
+          ]) ?>
 
-            <div class="d-flex justify-content-center gap-2 mt-3">
+          <div class="d-flex justify-content-center gap-2 mt-3">
 
-              <?= Html::submitButton(
-                    '<i class="bi bi-cloud-arrow-up"></i> Upload',
-                    ['class' => 'btn btn-primary']
-                  ) ?>
+            <?= Html::submitButton(
+              '<i class="bi bi-cloud-arrow-up"></i> Upload',
+              ['class' => 'btn btn-primary']
+            ) ?>
 
             <?php if ($model->avatar): ?>
-                <a href="<?= Url::to(['/user/delete-avatar']) ?>"
+              <a href="<?= Url::to(['/user/delete-avatar']) ?>"
                 class="btn btn-danger"
                 onclick="return confirm('Are you sure you want to delete your profile photo?')">
-                    <i class="bi bi-trash"></i> Delete
-                </a>
+                <i class="bi bi-trash"></i> Delete
+              </a>
             <?php endif; ?>
 
-            </div>
+          </div>
 
           <?php ActiveForm::end(); ?>
 
@@ -126,9 +126,9 @@ $this->title = "My Profile";
 
           <div class="d-flex mt-4 gap-2">
             <?= Html::submitButton(
-                  '<i class="bi bi-check-circle me-1"></i> Save Changes',
-                  ['class' => 'btn btn-primary']
-                ) ?>
+              '<i class="bi bi-check-circle me-1"></i> Save Changes',
+              ['class' => 'btn btn-primary']
+            ) ?>
 
             <a href="<?= Yii::$app->homeUrl ?>" class="btn btn-outline-secondary">
               Cancel

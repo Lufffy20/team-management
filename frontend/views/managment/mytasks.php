@@ -1,129 +1,139 @@
 <h4 class="mb-3 fw-bold d-flex justify-content-between align-items-center">
     My Tasks
-    <a href="<?= \yii\helpers\Url::to(['managment/create-task']) ?>" class="btn btn-primary btn-sm">
+    <a href="<?= \yii\helpers\Url::to(['managment/create-task']) ?>" class="btn btn-primary btn-sm shadow-sm">
         + Add Task
     </a>
 </h4>
 
 <!-- FILTER TABS -->
 <ul class="nav nav-pills small mb-3 gap-2">
-    <?php 
-        $filters = [
-            null => 'All',
-            'todo' => 'To-Do',
-            'in_progress' => 'In Progress',
-            'done' => 'Done'
-        ];
-    ?>
-
-    <?php foreach ($filters as $key => $label): ?>
-        <li class="nav-item">
-            <a class="nav-link <?= $status === $key ? 'active' : '' ?> px-3"
-               href="<?= \yii\helpers\Url::to(['managment/mytasks', 'status' => $key]) ?>">
-               <?= $label ?>
-            </a>
-        </li>
-    <?php endforeach; ?>
+<?php
+$filters = [
+    null => 'All',
+    'todo' => 'To-Do',
+    'in_progress' => 'In Progress',
+    'done' => 'Done'
+];
+foreach ($filters as $key => $label): ?>
+    <li class="nav-item">
+        <a class="nav-link px-3 <?= $status === $key ? 'active' : '' ?>"
+           href="<?= \yii\helpers\Url::to(['managment/mytasks','status'=>$key]) ?>">
+            <?= $label ?>
+        </a>
+    </li>
+<?php endforeach; ?>
 </ul>
 
 <!-- TASK LIST -->
 <div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
+<div class="card-body p-0">
 
-        <?php if (empty($tasks)): ?>
-            <div class="text-center text-muted py-5">
-                <div style="font-size:48px;">🗂️</div>
-                <div class="mt-2">No tasks found</div>
-            </div>
-        <?php else: ?>
-            <ul class="list-group list-group-flush">
+<?php if (empty($tasks)): ?>
+    <div class="text-center text-muted py-5">
+        <div style="font-size:48px;">📭</div>
+        <div class="mt-2 fw-semibold">No tasks found</div>
+    </div>
+<?php else: ?>
+<ul class="list-group list-group-flush">
 
-                <?php foreach ($tasks as $task): ?>
+<?php foreach ($tasks as $task): ?>
+<?php
+    $priorityClass = match($task->priority) {
+        'high'   => 'danger',
+        'medium' => 'warning',
+        default  => 'success',
+    };
 
-                    <?php
-                        // Priority badge
-                        $badgeClass = match($task->priority) {
-                            'high'   => 'bg-danger-subtle text-danger border border-danger',
-                            'medium' => 'bg-warning-subtle text-warning border border-warning',
-                            default  => 'bg-success-subtle text-success border border-success',
-                        };
+    $statusLabel = match($task->status) {
+        'todo' => 'To-Do',
+        'in_progress' => 'In Progress',
+        'done' => 'Done',
+        default => 'Unknown'
+    };
 
-                        // Status colors
-                        $statusColor = match($task->status) {
-                            'todo'        => '#6c757d',
-                            'in_progress' => '#0d6efd',
-                            'done'        => '#198754',
-                            default       => '#6c757d',
-                        };
-                    ?>
+    $statusColor = match($task->status) {
+        'todo' => 'secondary',
+        'in_progress' => 'primary',
+        'done' => 'success',
+        default => 'secondary'
+    };
 
-                    <li class="list-group-item py-3 task-item position-relative"
-                        style="transition:0.2s; cursor:pointer;"
-                        onclick="window.location='<?= \yii\helpers\Url::to(['managment/view-task','id'=>$task->id]) ?>'">
+    $isOverdue = strtotime($task->due_date) < strtotime(date('Y-m-d'))
+                 && $task->status !== 'done';
+?>
 
+<li class="list-group-item task-row"
+    onclick="window.location='<?= \yii\helpers\Url::to(['managment/view-task','id'=>$task->id]) ?>'">
 
-                        <div class="d-flex justify-content-between align-items-start">
+<div class="d-flex justify-content-between align-items-start">
 
-                            <div>
-                                <!-- STATUS DOT + TITLE -->
-                                <div class="fw-semibold d-flex align-items-center gap-2">
-                                    <span style="
-                                        height:10px; width:10px; border-radius:50%;
-                                        display:inline-block; background:<?= $statusColor ?>;">
-                                    </span>
-                                    <?= htmlspecialchars($task->title) ?>
-                                </div>
+<!-- LEFT -->
+<div>
+    <div class="fw-semibold fs-6 d-flex align-items-center gap-2">
+        <?= htmlspecialchars($task->title) ?>
+        <span class="badge bg-<?= $statusColor ?>-subtle text-<?= $statusColor ?>">
+            <?= $statusLabel ?>
+        </span>
+    </div>
 
-                                <!-- DESCRIPTION + DUE DATE -->
-                                <div class="text-muted small mt-1">
-                                    <?= htmlspecialchars($task->description) ?>
-                                    &nbsp;·&nbsp;
-                                    <b>Due: <?= date("d M", strtotime($task->due_date)) ?></b>
-                                </div>
-                            </div>
+    <div class="text-muted small mt-1">
+        <?= htmlspecialchars($task->description) ?>
+    </div>
 
-                            <!-- RIGHT SIDE ACTIONS -->
-                            <div class="d-flex flex-column align-items-end gap-1">
-
-                                <!-- PRIORITY BADGE -->
-                                <span class="badge rounded-pill <?= $badgeClass ?>">
-                                    <?= ucfirst($task->priority) ?>
-                                </span>
-
-                                <div class="mt-1 d-flex gap-2">
-
-                                    <!-- EDIT BUTTON -->
-                                    <a href="<?= \yii\helpers\Url::to(['managment/update-task', 'id' => $task->id]) ?>"
-                                       class="btn btn-sm btn-outline-primary"
-                                       onclick="event.stopPropagation();">
-                                       Edit
-                                    </a>
-
-                                    <!-- DELETE BUTTON -->
-                                    <a href="<?= \yii\helpers\Url::to(['managment/delete-task', 'id' => $task->id]) ?>"
-                                       class="btn btn-sm btn-outline-danger"
-                                       onclick="event.stopPropagation(); return confirm('Delete this task?');">
-                                       Delete
-                                    </a>
-
-                                </div>
-
-                            </div>
-                        </div>
-
-                    </li>
-
-                <?php endforeach; ?>
-
-            </ul>
-        <?php endif; ?>
-
+    <div class="small mt-1 <?= $isOverdue ? 'text-danger fw-semibold' : 'text-muted' ?>">
+        📅 Due: <?= date("d M Y", strtotime($task->due_date)) ?>
+        <?= $isOverdue ? '(Overdue)' : '' ?>
     </div>
 </div>
 
+<!-- RIGHT -->
+<div class="text-end">
+
+    <span class="badge rounded-pill bg-<?= $priorityClass ?> mb-2">
+        <?= ucfirst($task->priority) ?>
+    </span>
+
+    <div class="dropdown">
+        <button class="btn btn-sm btn-light border"
+                onclick="event.stopPropagation()"
+                data-bs-toggle="dropdown">
+            ⋮
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <a class="dropdown-item"
+                   href="<?= \yii\helpers\Url::to(['managment/update-task','id'=>$task->id]) ?>"
+                   onclick="event.stopPropagation()">✏️ Edit</a>
+            </li>
+            <li>
+                <a class="dropdown-item text-danger"
+                   href="<?= \yii\helpers\Url::to(['managment/delete-task','id'=>$task->id]) ?>"
+                   onclick="event.stopPropagation(); return confirm('Delete this task?')">
+                   🗑 Delete
+                </a>
+            </li>
+        </ul>
+    </div>
+
+</div>
+</div>
+</li>
+
+<?php endforeach; ?>
+</ul>
+<?php endif; ?>
+
+</div>
+</div>
+
 <style>
-    .task-item:hover {
-        background: #f9f9f9;
-        transform: translateX(4px);
-    }
+.task-row {
+    cursor: pointer;
+    transition: all .2s ease;
+    padding: 1rem 1.25rem;
+}
+.task-row:hover {
+    background: #f8f9fa;
+    box-shadow: inset 4px 0 0 #0d6efd;
+}
 </style>

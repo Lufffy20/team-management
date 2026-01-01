@@ -27,38 +27,38 @@ $this->params['breadcrumbs'][] = $this->title;
 
       <div class="table-responsive text-nowrap">
 
-      <?php Pjax::begin([
+        <?php Pjax::begin([
           'id' => 'task-grid-pjax',
-          'enablePushState' => false, 
+          'enablePushState' => false,
           'enableReplaceState' => false,
           'timeout' => 5000,
-      ]); ?>
+        ]); ?>
 
-      <?php echo Html::beginForm(
-    ['index'],
-    'get',
-    [
-        'data-pjax' => 1,
-        'id' => 'pageSizeForm',
-    ]
-); ?>
+        <?php echo Html::beginForm(
+          ['index'],
+          'get',
+          [
+            'data-pjax' => 1,
+            'id' => 'pageSizeForm',
+          ]
+        ); ?>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <div>
-        <label class="me-2 fw-semibold">Show</label>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <label class="me-2 fw-semibold">Show</label>
 
-        <?= Html::dropDownList(
-    'per-page',
-    Yii::$app->request->get('per-page', 10),
-    [
-        10  => '10',
-        25  => '25',
-        50  => '50',
-        100 => '100',
-    ],
-    [
-        'class' => 'form-select form-select-sm d-inline-block w-auto',
-        'onchange' => '
+            <?= Html::dropDownList(
+              'per-page',
+              Yii::$app->request->get('per-page', 10),
+              [
+                10  => '10',
+                25  => '25',
+                50  => '50',
+                100 => '100',
+              ],
+              [
+                'class' => 'form-select form-select-sm d-inline-block w-auto',
+                'onchange' => '
     $.pjax.reload({
         container: "#task-grid-pjax",
         url: "' . Url::to(['index']) . '",
@@ -68,14 +68,14 @@ $this->params['breadcrumbs'][] = $this->title;
     });
 ',
 
-    ]
-) ?>
+              ]
+            ) ?>
 
-        <span class="ms-2">entries</span>
-    </div>
-</div>
+            <span class="ms-2">entries</span>
+          </div>
+        </div>
 
-<?php echo Html::endForm(); ?>
+        <?php echo Html::endForm(); ?>
 
 
         <?= GridView::widget([
@@ -83,56 +83,56 @@ $this->params['breadcrumbs'][] = $this->title;
           'filterModel' => $searchModel,
 
           'tableOptions' => [
-              'class' => 'table table-bordered table-hover'
+            'class' => 'table table-bordered table-hover'
           ],
 
           'pager' => [
-    'class' => 'yii\bootstrap5\LinkPager',
-    'options' => ['class' => 'pagination justify-content-center mt-3'],
-    'linkContainerOptions' => ['class' => 'page-item'],
-    'linkOptions' => ['class' => 'page-link'],
-    'prevPageLabel' => '<i class="bx bx-chevron-left"></i>',
-    'nextPageLabel' => '<i class="bx bx-chevron-right"></i>',
-    'firstPageLabel' => false,
-    'lastPageLabel' => false,
-],
+            'class' => 'yii\bootstrap5\LinkPager',
+            'options' => ['class' => 'pagination justify-content-center mt-3'],
+            'linkContainerOptions' => ['class' => 'page-item'],
+            'linkOptions' => ['class' => 'page-link'],
+            'prevPageLabel' => '<i class="bx bx-chevron-left"></i>',
+            'nextPageLabel' => '<i class="bx bx-chevron-right"></i>',
+            'firstPageLabel' => false,
+            'lastPageLabel' => false,
+          ],
 
 
           'columns' => [
-              [
-                'class' => 'yii\grid\SerialColumn',
-                'header' => '#',
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
+            [
+              'class' => 'yii\grid\SerialColumn',
+              'header' => '#',
+              'headerOptions' => ['class' => 'p-3'],
+              'contentOptions' => ['class' => 'p-3'],
+            ],
 
-              [
-                'attribute' => 'id',
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
+            [
+              'attribute' => 'id',
+              'headerOptions' => ['class' => 'p-3'],
+              'contentOptions' => ['class' => 'p-3'],
+            ],
 
-              [
-                'attribute' => 'first_name',
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
+            [
+              'attribute' => 'first_name',
+              'headerOptions' => ['class' => 'p-3'],
+              'contentOptions' => ['class' => 'p-3'],
+            ],
 
-              [
-                'attribute' => 'last_name',
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-              ],
+            [
+              'attribute' => 'last_name',
+              'headerOptions' => ['class' => 'p-3'],
+              'contentOptions' => ['class' => 'p-3'],
+            ],
 
-              
-              [
-    'attribute' => 'username',
-    'format' => 'raw',
-    'value' => function ($model) {
 
-        $avatarUrl = Yii::$app->avatar->get($model);
+            [
+              'attribute' => 'username',
+              'format' => 'raw',
+              'value' => function ($model) {
 
-        return '
+                $avatarUrl = Yii::$app->avatar->get($model);
+
+                return '
         <div class="d-flex align-items-center gap-2">
             <img
                 src="' . $avatarUrl . '"
@@ -143,21 +143,21 @@ $this->params['breadcrumbs'][] = $this->title;
             >
             <strong>' . Html::encode($model->username) . '</strong>
         </div>';
-    },
-],
+              },
+            ],
 
 
 
-              [
-                'class' => ActionColumn::class,
-                'header' => 'Action',
-                'headerOptions' => ['class' => 'p-3'],
-                'contentOptions' => ['class' => 'p-3'],
-                'template' => '{actions}',
+            [
+              'class' => ActionColumn::class,
+              'header' => 'Action',
+              'headerOptions' => ['class' => 'p-3'],
+              'contentOptions' => ['class' => 'p-3'],
+              'template' => '{actions}',
 
-                'buttons' => [
-                  'actions' => function ($url, $model) {
-                    return '
+              'buttons' => [
+                'actions' => function ($url, $model) {
+                  return '
                     <div class="dropdown">
                       <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
                         <i class="bx bx-dots-vertical-rounded fs-4"></i>
@@ -181,9 +181,9 @@ $this->params['breadcrumbs'][] = $this->title;
 
                       </div>
                     </div>';
-                  }
-                ]
-              ],
+                }
+              ]
+            ],
           ],
         ]); ?>
         <?php Pjax::end(); ?>
