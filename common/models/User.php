@@ -99,6 +99,9 @@ class User extends ActiveRecord implements IdentityInterface
             // Tokens and pending email
             [['pending_email', 'access_token'], 'safe'],
             [['pending_email'], 'email'],
+
+            [['stripe_customer_id'], 'safe'],
+
         ];
     }
 
@@ -114,24 +117,50 @@ class User extends ActiveRecord implements IdentityInterface
 
         // Avatar upload scenario
         $scenarios['upload'] = [
-            'avatarFile', 'first_name', 'last_name', 'email', 'username', 'access_token'
+            'avatarFile',
+            'first_name',
+            'last_name',
+            'email',
+            'username',
+            'access_token'
         ];
 
         // Create user scenario
         $scenarios['create'] = [
-            'first_name', 'last_name', 'email', 'username',
-            'role', 'status', 'avatarFile', 'password', 'confirm_password', 'access_token'
+            'first_name',
+            'last_name',
+            'email',
+            'username',
+            'role',
+            'status',
+            'avatarFile',
+            'password',
+            'confirm_password',
+            'access_token'
         ];
 
         // Update user scenario
         $scenarios['update'] = [
-            'first_name', 'last_name', 'email', 'username',
-            'role', 'status', 'avatarFile', 'password', 'confirm_password', 'access_token'
+            'first_name',
+            'last_name',
+            'email',
+            'username',
+            'role',
+            'status',
+            'avatarFile',
+            'password',
+            'confirm_password',
+            'access_token'
         ];
 
         // API register scenario
         $scenarios['api-register'] = [
-            'first_name', 'last_name', 'email', 'username', 'password', 'access_token'
+            'first_name',
+            'last_name',
+            'email',
+            'username',
+            'password',
+            'access_token'
         ];
 
         return $scenarios;
