@@ -16,6 +16,9 @@ use common\models\TeamMembers;
 use common\components\StripeService;
 use frontend\models\ResendVerificationEmailForm;
 use frontend\models\VerifyEmailForm;
+use frontend\models\AddressForm;
+use common\models\Address;
+
 
 /**
  * ManagmentController
@@ -309,90 +312,173 @@ class ManagmentController extends Controller
             throw new NotFoundHttpException('User not found.');
         }
 
-        if (Yii::$app->request->isPost) {
+        $model = new AddressForm();
+        $model->user = $user; // 👈 email validation ke liye (model me)
 
-            $post = Yii::$app->request->post();
+        /* ================= LOAD USER DATA ================= */
+        $model->first_name = $user->first_name;
+        $model->last_name  = $user->last_name;
+        $model->username   = $user->username;
+        $model->email      = $user->email;
 
-            // Update username
-            if (isset($post['User']['username'])) {
-                $user->username = trim($post['User']['username']);
+        /* ================= LOAD HOME ADDRESS ================= */
+        $homeAddress = Address::findOne([
+            'user_id' => $user->id,
+            'address_type' => Address::TYPE_HOME,
+        ]);
+
+        if ($homeAddress) {
+            $model->address = $homeAddress->address;
+            $model->city    = $homeAddress->city;
+            $model->state   = $homeAddress->state;
+            $model->pincode = $homeAddress->pincode;
+        }
+
+        /* ================= SAVE PROFILE + HOME ================= */
+        if ($model->load(Yii::$app->request->post()) && $model->validate()) {
+
+            // Update user basic info
+            $user->first_name = $model->first_name;
+            $user->last_name  = $model->last_name;
+            $user->username   = $model->username;
+
+            // EMAIL (no duplicate check here)
+            if ($model->email !== $user->email) {
+                $user->pending_email = $model->email;
+                $user->verification_token =
+                    Yii::$app->security->generateRandomString() . '_' . time();
             }
-
-            $newEmail = isset($post['User']['email'])
-                ? trim($post['User']['email'])
-                : $user->email;
-
-            /* EMAIL NOT CHANGED */
-            if ($newEmail === $user->email) {
-
-                $user->save(false);
-
-                // Update Stripe customer
-                if (!empty($user->stripe_customer_id)) {
-                    try {
-                        $stripeService = new StripeService();
-                        $stripeService->updateCustomer(
-                            $user->stripe_customer_id,
-                            $user->username,
-                            $user->email
-                        );
-                    } catch (\Throwable $e) {
-                        Yii::error(
-                            'Stripe update failed on profile update: ' . $e->getMessage(),
-                            __METHOD__
-                        );
-                    }
-                }
-
-                Yii::$app->session->setFlash(
-                    'success',
-                    'Profile updated successfully.'
-                );
-
-                return $this->refresh();
-            }
-
-            /* EMAIL CHANGED */
-            $exists = User::find()
-                ->where(['email' => $newEmail])
-                ->andWhere(['<>', 'id', $user->id])
-                ->exists();
-
-            if ($exists) {
-                Yii::$app->session->setFlash(
-                    'error',
-                    'This email is already used by another account.'
-                );
-                return $this->refresh();
-            }
-
-            // Store pending email and verification token
-            $user->pending_email = $newEmail;
-            $user->verification_token =
-                Yii::$app->security->generateRandomString() . '_' . time();
 
             $user->save(false);
 
-            // Send verification email
-            Yii::$app->mailer
-                ->compose('emailChange', ['user' => $user])
-                ->setTo($newEmail)
-                ->setFrom([Yii::$app->params['supportEmail'] => Yii::$app->name])
-                ->setSubject('Verify Your New Email Address')
-                ->send();
+            // Save HOME address
+            $homeAddress = Address::findOne([
+                'user_id' => $user->id,
+                'address_type' => Address::TYPE_HOME,
+            ]) ?? new Address();
+
+            $homeAddress->user_id      = $user->id;
+            $homeAddress->address_type = Address::TYPE_HOME;
+            $homeAddress->address      = $model->address;
+            $homeAddress->city         = $model->city;
+            $homeAddress->state        = $model->state;
+            $homeAddress->pincode      = $model->pincode;
+
+            if (!$homeAddress->save()) {
+                Yii::$app->session->setFlash(
+                    'error',
+                    'Home address could not be saved.'
+                );
+                return $this->refresh();
+            }
 
             Yii::$app->session->setFlash(
-                'info',
-                'A verification link has been sent to your new email address.'
+                'success',
+                'Profile updated successfully.'
             );
 
             return $this->refresh();
         }
 
+        /* ================= RENDER VIEW ================= */
         return $this->render('profile', [
-            'model' => $user,
+            'model' => $model,
+            'billingAddress'  => Address::getBillingAddress($user->id) ?? new Address(),
+            'shippingAddress' => Address::getShippingAddress($user->id) ?? new Address(),
+            'user' => $user,
         ]);
     }
+
+
+    /**
+     * Update billing address only.
+     */
+    public function actionUpdateBillingAddress()
+    {
+        /** @var \common\models\User $user */
+        $user = Yii::$app->user->identity;
+
+        if (!$user) {
+            throw new NotFoundHttpException('User not found.');
+        }
+
+        $userId = $user->id;
+
+        $billingAddress = Address::getBillingAddress($userId) ?? new Address();
+
+        if (
+            Yii::$app->request->isPost &&
+            $billingAddress->load(Yii::$app->request->post())
+        ) {
+            $billingAddress->user_id = $userId;
+            $billingAddress->address_type = Address::TYPE_BILLING;
+
+            if ($billingAddress->save()) {
+                Yii::$app->session->setFlash(
+                    'success',
+                    'Billing address updated successfully.'
+                );
+            } else {
+                Yii::$app->session->setFlash(
+                    'error',
+                    'Billing address could not be saved. Please check the form.'
+                );
+            }
+        }
+
+        return $this->redirect(['profile']);
+    }
+
+
+    /**
+     * Update shipping address only.
+     */
+    public function actionUpdateShippingAddress()
+    {
+        /** @var \common\models\User $user */
+        $user = Yii::$app->user->identity;
+
+        if (!$user) {
+            throw new NotFoundHttpException('User not found.');
+        }
+
+        $userId = $user->id;
+
+        // Existing shipping address or new
+        $shippingAddress = Address::getShippingAddress($userId) ?? new Address();
+
+        if (Yii::$app->request->isPost) {
+
+            if ($shippingAddress->load(Yii::$app->request->post())) {
+
+                // Force system fields
+                $shippingAddress->user_id = $userId;
+                $shippingAddress->address_type = Address::TYPE_SHIPPING;
+
+                if ($shippingAddress->save()) {
+
+                    Yii::$app->session->setFlash(
+                        'success',
+                        'Shipping address updated successfully.'
+                    );
+                } else {
+
+                    Yii::$app->session->setFlash(
+                        'error',
+                        'Shipping address could not be saved. Please check the form.'
+                    );
+                }
+            } else {
+                Yii::$app->session->setFlash(
+                    'error',
+                    'Invalid shipping address data submitted.'
+                );
+            }
+        }
+
+        return $this->redirect(['profile']);
+    }
+
 
     /**
      * Upload or update profile picture.

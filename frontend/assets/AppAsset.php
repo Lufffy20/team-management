@@ -19,7 +19,7 @@ class AppAsset extends AssetBundle
         'css/taskcard.css',
         'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
         'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css',
-        
+
     ];
     public $js = [
         'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
@@ -28,13 +28,15 @@ class AppAsset extends AssetBundle
         'teammanagment/js/subtask.js',
         'https://cdn.jsdelivr.net/npm/chart.js',
         'teammanagment/js/dashboard.js',
-        
+        'js/address.js',
+        'js/profile-address.js',
+
         // 'teammanagment/js/draganddrop.js',
 
-        
+
     ];
-     public $jsOptions = [
-        'position' => \yii\web\View::POS_END   
+    public $jsOptions = [
+        'position' => \yii\web\View::POS_END
     ];
 
     public $depends = [
