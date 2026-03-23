@@ -1,0 +1,12 @@
+/* Responsive layout rules for Kanban boards */
+@media (max-width: 768px) {
+    .kanban-board-container {
+        display: block !important;
+        overflow-y: auto;
+    }
+    
+    .kanban-column {
+        min-width: 100% !important;
+        margin-bottom: 20px;
+    }
+}

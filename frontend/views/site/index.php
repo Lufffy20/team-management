@@ -269,6 +269,13 @@ $this->registerJs(
     flex-direction: column;
 }
 
+@media (max-width: 768px) {
+    .chart-card {
+        height: auto;
+        min-height: 300px;
+    }
+}
+
 .chart-header {
     flex-shrink: 0;
 }

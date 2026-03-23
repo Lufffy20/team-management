@@ -15,7 +15,7 @@ $this->title = 'Settings';
             Appearance
         </div>
 
-        <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
                 <h6 class="mb-1">Dark Mode</h6>
                 <small class="text-muted">

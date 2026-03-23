@@ -19,6 +19,16 @@ $action = Yii::$app->controller->action->id;
             </a>
         </li>
 
+            <!-- QUICK GUIDE -->
+        <li class="nav-item mt-2 text-muted small px-3">Help & Guide</li>
+
+        <li class="nav-item">
+            <a href="<?= Url::to(['site/guide']) ?>"
+                class="nav-link <?= ($controller == 'site' && $action == 'guide') ? 'active' : '' ?>">
+                <i class="bi bi-info-circle"></i> How to Work
+            </a>
+        </li>
+
         <!-- TASKS SECTION -->
         <li class="nav-item mt-2 text-muted small px-3">Tasks</li>
 

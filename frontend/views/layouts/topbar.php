@@ -23,7 +23,17 @@ if (!$isGuest) {
 }
 ?>
 
-<div class="topbar d-flex justify-content-end align-items-center p-2">
+<div class="topbar d-flex justify-content-between align-items-center p-2">
+
+    <!-- Mobile Hamburger Toggle -->
+    <div class="d-block d-md-none ms-2">
+        <button id="sidebarToggleBtn" class="btn btn-light border-0">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+    </div>
+
+    <!-- Right Aligned Items wrapper -->
+    <div class="d-flex align-items-center ms-auto">
 
     <?php if (!$isGuest): ?>
         <div class="me-3 position-relative">
@@ -116,6 +126,8 @@ if (!$isGuest) {
             <?php endif; ?>
 
         </ul>
+
+    </div>
 
     </div>
 

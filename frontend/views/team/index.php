@@ -4,8 +4,8 @@ use common\models\TeamMembers;
 use common\models\User;
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold">📂 My Teams</h3>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <h3 class="fw-bold mb-0">📂 My Teams</h3>
     <a href="/team/create" class="btn btn-primary">+ Create Team</a>
 </div>
 

@@ -26,6 +26,7 @@ class AppAsset extends AssetBundle
         'teammanagment/js/kanban.js',
         'teammanagment/js/edit-task.js',
         'teammanagment/js/subtask.js',
+        'teammanagment/js/comment.js',
         'https://cdn.jsdelivr.net/npm/chart.js',
         'teammanagment/js/dashboard.js',
         'js/address.js',

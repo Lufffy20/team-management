@@ -22,11 +22,14 @@ AppAsset::register($this);
 <!-- TOPBAR -->
 <?= $this->render('topbar') ?>
 
+<!-- OVERLAY FOR MOBILE SIDEBAR -->
+<div class="menu-overlay" id="menuOverlay"></div>
+
 <!-- SIDEBAR -->
 <?= $this->render('sidebar') ?>
 
 <!-- MAIN CONTENT AREA -->
-<div class="content" style="margin-left:250px; padding:20px;"> <!-- sidebar width adjust here -->
+<div class="content">
 
     <!-- FLASH MESSAGES -->
     <div class="container mb-3">
@@ -44,6 +47,31 @@ AppAsset::register($this);
     </div>
 
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('menuOverlay');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+
+    if (toggleBtn) {
+        // Toggle Sidebar
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent immediate closing
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        });
+    }
+
+    if (overlay) {
+        // Close Sidebar when clicking on overlay
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        });
+    }
+});
+</script>
 
 <?php $this->endBody() ?>
 </body>

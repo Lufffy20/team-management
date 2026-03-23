@@ -223,16 +223,19 @@ $remaining = 5 - count($model->attachments);
 <div class="tab-pane fade" id="comments">
 
 <?php $commentForm = ActiveForm::begin([
+    'id' => 'commentForm',
     'action' => ['task/add-comment', 'id' => $model->id],
-    'method' => 'post'
+    'method' => 'post',
+    'options' => ['class' => 'ajax-form']
 ]); ?>
 
 <textarea name="comment"
+          id="commentInput"
           class="form-control mb-2"
           rows="2"
           placeholder="Write a comment..."></textarea>
 
-<button type="submit" class="btn btn-primary btn-sm">
+<button type="submit" class="btn btn-primary btn-sm" id="postCommentBtn">
     Post Comment
 </button>
 
@@ -240,19 +243,15 @@ $remaining = 5 - count($model->attachments);
 
 <hr>
 
+<div id="commentList">
 <?php if ($model->comments): ?>
     <?php foreach ($model->comments as $c): ?>
-        <div class="mb-3">
-            <strong><?= Html::encode($c->user->username) ?></strong>
-            <div class="text-muted small">
-                <?= Yii::$app->formatter->asRelativeTime($c->created_at) ?>
-            </div>
-            <div><?= nl2br(Html::encode($c->comment)) ?></div>
-        </div>
+        <?= $this->render('_comment_item', ['c' => $c]) ?>
     <?php endforeach; ?>
 <?php else: ?>
-    <div class="text-muted small">No comments yet</div>
+    <div class="text-muted small no-comment">No comments yet</div>
 <?php endif; ?>
+</div>
 
 </div>
 
@@ -266,32 +265,15 @@ $remaining = 5 - count($model->attachments);
     </button>
 </div>
 
-<?php foreach ($model->subtasks as $s): ?>
-
-<div class="d-flex align-items-center justify-content-between subtask-item mb-2">
-
-    <div class="d-flex align-items-center gap-2">
-
-        <input type="checkbox"
-               class="toggle-subtask"
-               data-subtask-id="<?= $s->id ?>"
-               <?= $s->is_done ? 'checked' : '' ?>>
-
-        <span class="subtask-title <?= $s->is_done ? 'line-through text-muted' : '' ?>">
-            <?= Html::encode($s->title) ?>
-        </span>
-
-    </div>
-
-    <button type="button"
-            class="btn btn-sm btn-outline-danger delete-subtask"
-            data-id="<?= $s->id ?>">
-        ✖
-    </button>
-
+<div id="subtaskList">
+<?php if ($model->subtasks): ?>
+    <?php foreach ($model->subtasks as $s): ?>
+        <?= $this->render('_subtask_item', ['s' => $s]) ?>
+    <?php endforeach; ?>
+<?php else: ?>
+    <div class="text-muted small no-subtask">No subtasks</div>
+<?php endif; ?>
 </div>
-
-<?php endforeach; ?>
 
 </div>
 

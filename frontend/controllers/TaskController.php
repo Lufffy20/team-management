@@ -605,26 +605,27 @@ protected function findModel($id)
 /************* ADD SUBTASK *************/
 public function actionAddSubtask($task_id)
 {
-    // New subtask model
     $subtask = new Subtask();
-
-    // Parent task reference
     $subtask->task_id = $task_id;
-
-    // Subtask title from POST
     $subtask->title = Yii::$app->request->post('title');
 
-    // Save subtask
     if ($subtask->save()) {
-        // Success message
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->format = Response::FORMAT_JSON;
+            return [
+                'success' => true,
+                'html' => $this->renderPartial('_subtask_item', ['s' => $subtask])
+            ];
+        }
         Yii::$app->session->setFlash('success', 'Subtask added');
     }
 
-    // Redirect back to task update page
-    return $this->redirect([
-        'task/update',
-        'id' => $task_id
-    ]);
+    if (Yii::$app->request->isAjax) {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return ['success' => false, 'errors' => $subtask->getErrors()];
+    }
+
+    return $this->redirect(['task/update', 'id' => $task_id]);
 }
 
 
@@ -785,41 +786,41 @@ public function actionDeleteAttachment($id)
 // ===============================
 public function actionAddComment($id)
 {
-    // Fetch task
     $task = $this->findModel($id);
-
-    // Trim comment text
-    $commentText = trim(
-        Yii::$app->request->post('comment')
-    );
+    $commentText = trim(Yii::$app->request->post('comment'));
 
     if ($commentText) {
-
-        // Create new comment
         $comment = new \common\models\TaskComment();
         $comment->task_id = $task->id;
         $comment->user_id = Yii::$app->user->id;
         $comment->comment = $commentText;
-        $comment->save(false);
+        
+        if ($comment->save(false)) {
+            Logger::add(
+                "Comment Added",
+                "Comment added on Task #{$task->id} by " . Yii::$app->user->identity->username,
+                $task->board->team_id,
+                $task->board_id
+            );
 
-        /* ===== COMMENT ACTIVITY ===== */
-        $user = Yii::$app->user->identity;
+            $this->sendCommentMail($task, $comment);
 
-        Logger::add(
-            "Comment Added",
-            "Comment added on Task #{$task->id} by {$user->username}",
-            $task->board->team_id,
-            $task->board_id
-        );
-
-        /* ===== COMMENT EMAIL ===== */
-        $this->sendCommentMail($task, $comment);
+            if (Yii::$app->request->isAjax) {
+                Yii::$app->response->format = Response::FORMAT_JSON;
+                return [
+                    'success' => true,
+                    'html' => $this->renderPartial('_comment_item', ['c' => $comment])
+                ];
+            }
+        }
     }
 
-    return $this->redirect([
-        'task/update',
-        'id' => $task->id
-    ]);
+    if (Yii::$app->request->isAjax) {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        return ['success' => false];
+    }
+
+    return $this->redirect(['task/update', 'id' => $task->id]);
 }
 
 

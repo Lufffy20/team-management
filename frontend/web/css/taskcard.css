@@ -47,3 +47,12 @@
     font-weight: bold;
     font-size: 0.85rem;
 }
+
+@media (max-width: 768px) {
+    .task-content {
+        padding: 12px;
+    }
+    .kanban-task {
+        margin-bottom: 15px;
+    }
+}

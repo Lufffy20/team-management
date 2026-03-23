@@ -72,6 +72,9 @@ a.desc:after {
 }
 
 @media(max-width:767px) {
+    main > .container, main > .container-fluid {
+        padding: 80px 10px 15px; /* Adjust padding for mobile devices */
+    }
     .navbar form > button.logout {
         display:block;
         text-align: left;
@@ -100,5 +103,21 @@ a.desc:after {
 .breadcrumb-item > a
 {
     text-decoration: none;
+}
+
+/* Global utility responsive additions */
+@media (max-width: 767px) {
+    .table-responsive {
+        border-radius: 0.5rem;
+    }
+    h3, h4 {
+        font-size: 1.5rem;
+    }
+    h5 {
+        font-size: 1.25rem;
+    }
+    h6 {
+        font-size: 1.1rem;
+    }
 }
 

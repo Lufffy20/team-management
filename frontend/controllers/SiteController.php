@@ -233,6 +233,11 @@ class SiteController extends Controller
     }
 
 
+    public function actionGuide()
+    {
+        return $this->render('guide');
+    }
+
     /**
      * Dashboard statistics API (AJAX).
      *
@@ -492,7 +497,7 @@ public function actionSignup()
             );
 
             // Refresh same page (tests expect refresh)
-            return $this->refresh();
+            return $this->redirect(['site/login']);
         }
     }
 
@@ -611,6 +616,8 @@ public function actionSignup()
      */
     public function actionResendVerificationEmail()
     {
+
+        $this->layout = 'blank';
         $model = new ResendVerificationEmailForm();
 
         if ($model->load(Yii::$app->request->post()) && $model->validate()) {

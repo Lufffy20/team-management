@@ -92,3 +92,23 @@
 .line-through{
     text-decoration:line-through;
 }
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .task-edit-box {
+        padding: 16px;
+        margin: 10px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,.08);
+    }
+    .attachment-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .attachment-image {
+        width: 100%;
+        height: auto;
+        max-height: 120px;
+    }
+}

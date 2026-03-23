@@ -65,10 +65,10 @@ foreach ($filters as $key => $label): ?>
 <li class="list-group-item task-row"
     onclick="window.location='<?= \yii\helpers\Url::to(['managment/view-task','id'=>$task->id]) ?>'">
 
-<div class="d-flex justify-content-between align-items-start">
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2">
 
 <!-- LEFT -->
-<div>
+<div class="w-100">
     <div class="fw-semibold fs-6 d-flex align-items-center gap-2">
         <?= htmlspecialchars($task->title) ?>
         <span class="badge bg-<?= $statusColor ?>-subtle text-<?= $statusColor ?>">
@@ -87,7 +87,7 @@ foreach ($filters as $key => $label): ?>
 </div>
 
 <!-- RIGHT -->
-<div class="text-end">
+<div class="text-sm-end w-100 w-sm-auto d-flex d-sm-block justify-content-between align-items-center mt-2 mt-sm-0">
 
     <span class="badge rounded-pill bg-<?= $priorityClass ?> mb-2">
         <?= ucfirst($task->priority) ?>
