@@ -4,16 +4,15 @@ RUN apt-get update && apt-get install -y unzip git curl
 RUN docker-php-ext-install pdo pdo_mysql
 RUN a2enmod rewrite
 
-# ✅ CORRECT PATH
-RUN echo '<VirtualHost *:80>
-DocumentRoot /app/web
-
-<Directory /app/web>
-Options Indexes FollowSymLinks
-AllowOverride All
-Require all granted
-</Directory>
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+# ✅ PROPER MULTILINE STRING (IMPORTANT)
+RUN printf "<VirtualHost *:80>\n\
+    DocumentRoot /app/web\n\
+    <Directory /app/web>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+    </Directory>\n\
+    </VirtualHost>\n" > /etc/apache2/sites-available/000-default.conf
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
