@@ -4,11 +4,11 @@ RUN apt-get update && apt-get install -y unzip git curl
 RUN docker-php-ext-install pdo pdo_mysql
 RUN a2enmod rewrite
 
-# ✅ IMPORTANT: path change
+# ✅ CORRECT PATH
 RUN echo '<VirtualHost *:80>
-DocumentRoot /var/www/html/web
+DocumentRoot /app/web
 
-<Directory /var/www/html/web>
+<Directory /app/web>
 Options Indexes FollowSymLinks
 AllowOverride All
 Require all granted
@@ -17,12 +17,12 @@ Require all granted
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-COPY . /var/www/html/
+COPY . /app
 
-WORKDIR /var/www/html
+WORKDIR /app
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-RUN chown -R www-data:www-data /var/www/html
-RUN chmod -R 755 /var/www/html
+RUN chown -R www-data:www-data /app
+RUN chmod -R 755 /app
 
 EXPOSE 80
