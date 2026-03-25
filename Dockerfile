@@ -1,18 +1,32 @@
-FROM yiisoftware/yii2-php:8.1-apache
+FROM php:8.1-apache
 
-# Set up the working directory inside container
-WORKDIR /app
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    unzip \
+    git \
+    curl
 
-# Apne poore code ko container me copy karo
-COPY . /app
+# Install PHP extensions
+RUN docker-php-ext-install pdo pdo_mysql
 
-# Composer packages install karo
-RUN composer install --no-dev --prefer-dist --optimize-autoloader
+# Enable Apache rewrite
+RUN a2enmod rewrite
 
-# Apache ko batao ki index.php file kahan hai (Backend ke liye)
-RUN sed -i -e 's|/app/web|/app/backend/web|g' /etc/apache2/sites-available/000-default.conf
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Render (Linux) environment me write permissions dena bohot zaroori hai
-RUN chmod -R 777 backend/runtime backend/web/assets frontend/runtime frontend/web/assets
+# Copy project
+COPY . /var/www/html/
+
+WORKDIR /var/www/html
+
+# Install Yii2 dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html
+
+# Point to web folder
+WORKDIR /var/www/html/web
 
 EXPOSE 80
